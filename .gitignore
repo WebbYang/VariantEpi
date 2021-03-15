@@ -1,0 +1,5 @@
+variants/static/pred_out/*
+nohup.out
+data/hg19*
+db.sqlite3
+VariantEpi/settings.py
