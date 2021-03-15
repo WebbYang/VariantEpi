@@ -1,0 +1,59 @@
+{% extends "variants/layout.html" %} {% block body %} {% load static %}
+
+<script>
+    function waiting_sign() {
+        var divbox = document.getElementById('postCircle');
+        divbox.style.visibility = 'visible';
+    }
+
+    function showCircle() {
+        alert('Start Loading! May take a few minutes...');
+        document.getElementById("postCircle").style.display = "block";
+    }
+
+    //document.getElementById("mylink").onclick = waiting_sign("postCircle");
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var imgs = document.querySelectorAll("p");
+        [].forEach.call(imgs, function(img) {
+            var str_id = img.innerHTML.split("/")[1];
+            if (str_id.includes("box")) {
+                img.innerHTML = "Box plot of " + str_id.split("_")[1] + " in " + str_id.split("_")[0];
+            } else {
+                img.innerHTML = "Pairwise significance of " + str_id.split("_")[1] + " in " + str_id.split("_")[0];
+            }
+
+        });
+    })
+</script>
+
+
+<h2 style="text-align:center">Prediction Results of One SNP Mutation</h2>
+
+
+<div class="loader" id="postCircle">
+</div>
+
+<div class="w3-container w3-cell w3-blue" style="width:10%">
+    <h3>Menu</h3>
+    <hr>
+    <h5>Mutation Map</h5>
+    {% for rsid in rsid_list %}
+    <a onclick="showCircle()" href="{% url 'variants:mutationMap' rsid login %}">{{rsid}}</a> {% endfor %}
+    <hr>
+    <a href="{% url 'variants:index' %}">Return home</a>
+</div>
+
+<div class="w3-container w3-cell">
+    {% for img in box_img_path %}
+    <p>{{img}}</p>
+    <img src="{% static img %}" alt="boxplot"> {% endfor %}
+</div>
+
+<div class="w3-container w3-cell">
+    {% for img in compare_img_path %}
+    <p>{{img}}</p>
+    <img src="{% static img %}" alt="posthoc"> {% endfor %}
+</div>
+
+{% endblock %}

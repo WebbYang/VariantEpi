@@ -1,0 +1,46 @@
+{% extends "variants/layout.html" %} {% block body %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const a = document.querySelector('li').innerHTML
+        const b = 'No tasks.'
+        var n = a.localeCompare(b);
+        //document.getElementById("demo").innerHTML = a + "<br>" + b + "<br>" + n;
+        if (n === 0) {
+            document.querySelector("#predict").disabled = "disabled";
+        }
+    });
+
+    function showCircle() {
+        alert('Start Loading! May take a few minutes...');
+        document.getElementById("postCircle").style.display = "block";
+    }
+</script>
+
+<div class="w3-container">
+    <!--<p id="demo"></p>-->
+    <p>In-silico mutagenesis for variant function prediction</p>
+    <div class="loader" id="postCircle">
+    </div>
+    <h3>Input</h3>
+    <form action="{% url 'variants:index' %}" method="post">
+        {% csrf_token %} {{ form }}
+        <input type="submit" value="Submit">
+    </form>
+    <h3>Available Tasks</h3>
+    <ul>
+        {% for task in bs_info %}
+        <li>{{ task }}</li>
+        {% empty %}
+        <li>No tasks.</li>
+        {% endfor %}
+    </ul>
+
+    <form action="{% url 'variants:predict' login %}">
+        <!--<button id="Calculate">Calculate</button>-->
+        <button onclick="showCircle()" id="predict" type="submit">Predict</button>
+    </form>
+</div>
+
+
+{% endblock %}

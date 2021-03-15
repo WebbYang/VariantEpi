@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <title>Tasks</title>
+    {% load static %}
+    <style>
+        img {
+            width: 100%;
+            height: auto;
+        }
+        
+        .w3-cell {
+            width: 300px;
+        }
+        
+        #postCircle {
+            display: none
+        }
+        
+        .loader {
+            text-align: center;
+            border: 16px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 16px solid #3498db;
+            width: 120px;
+            height: 120px;
+            -webkit-animation: spin 2s linear infinite;
+            /* Safari */
+            animation: spin 2s linear infinite;
+        }
+        /* Safari */
+        
+        @-webkit-keyframes spin {
+            0% {
+                -webkit-transform: rotate(0deg);
+            }
+            100% {
+                -webkit-transform: rotate(360deg);
+            }
+        }
+        
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        
+        #user-tools {
+            float: right;
+            padding: 0;
+            margin: 0 0 0 20px;
+            font-weight: 300;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            text-align: right;
+        }
+        
+        #user-tools a {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+        }
+        
+        #user-tools a:focus,
+        #user-tools a:hover {
+            text-decoration: none;
+            border-bottom-color: #79aec8;
+            color: #79aec8;
+        }
+    </style>
+    <!--<script src="{% static 'count.js' %}"></script>-->
+</head>
+
+<body>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <div class="w3-container w3-teal">
+        <h1>VariantEpi</h1>
+        <div id="user-tools">
+            <a href="{% url 'variants:index' %}">View home</a> /
+
+            <a href="{% url 'variants:help' %}">Help</a> /
+
+            <a href="{% url 'variants:about' %}">About</a>
+
+        </div>
+    </div>
+    {% block body %} {% endblock %}
+</body>
+
+</html>

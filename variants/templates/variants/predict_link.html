@@ -1,0 +1,45 @@
+{% extends "variants/layout.html" %} {% block body %} {% load static %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var str_list = ""
+        for (item in document.querySelector("#box_img").innerHTML) {
+            str_list += parseIdString(item);
+        }
+        document.querySelector("#list").innerHTML = ;
+    });
+
+    function parseIdString(filename) {
+        partof = filename.split('/')[1]
+        return partof.split(' ')[0]
+    }
+</script>
+
+<div class="w3-container w3-teal">
+    <h1>VariantEpi</h1>
+</div>
+<div class="w3-container">
+    <h1>Predict</h1>
+</div>
+
+<div class="w3-container w3-cell w3-blue" id="list">
+    <h3>Mutation Map</h3>
+    {% for img in box_img_path %}
+    <a href="">parseIdString({{img}})</a> {% endfor %}
+    <hr>
+    <a href="{% url 'variants:index' %}">Return home</a>
+</div>
+
+<div class="w3-container w3-cell" id="box_img">
+    {% for img in box_img_path %}
+    <p>{{img}}</p>
+    <img src="{% static img %}" alt="boxplot"> {% endfor %}
+</div>
+
+<div class="w3-container w3-cell">
+    {% for img in compare_img_path %}
+    <p>{{img}}</p>
+    <img src="{% static img %}" alt="posthoc"> {% endfor %}
+</div>
+
+{% endblock %}

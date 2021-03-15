@@ -1,0 +1,26 @@
+{% extends "variants/layout.html" %} {% block body %} {% load static %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var imgs = document.querySelectorAll("p");
+        [].forEach.call(imgs, function(img) {
+            var str_id = img.innerHTML;
+            str_id = str_id.split("/")[1].split(".")[0];
+            img.innerHTML = str_id.split("_")[1] + " " + str_id.split("_")[2] + " in " + str_id.split("_")[0]
+        });
+    })
+</script>
+<h2 style="text-align:center">Mutation Map</h2>
+
+<div class="w3-container w3-cell w3-blue" style="width:10%">
+    <h3>Menu</h3>
+    <a href="{% url 'variants:predict' login %}">Return results</a>
+    <a href="{% url 'variants:index' %}">Return home</a>
+</div>
+
+<div class="w3-container w3-cell">
+    {% for img in img_paths %}
+    <p>{{img}}</p>
+    <img src="{% static img %}" alt="mutation map"> {% endfor %}
+</div>
+
+{% endblock %}

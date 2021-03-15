@@ -1,0 +1,46 @@
+{% extends "variants/layout.html" %} {% block body %}
+<style>
+    ol {
+        list-style-type: none;
+    }
+    
+    li:before {
+        content: "[" counter(section) "] ";
+    }
+    
+    li {
+        counter-increment: section;
+        text-indent: -35px
+    }
+</style>
+<div class="w3-container">
+    <h3>About</h3>
+    <p>This website is free and open to all users and there is no login requirement.</p>
+    <p>
+        This website provides a pipeline to analyze the variant effects on histone modification and transcription profiles. From a list of variants’ rsID and a keyword of cell types as input, the search interface finds a list of available experiment types of
+        pretrained models. Next, the genomic sequences of the reference and alternative SNP are generated based on each rsID. The pretrained models predict the profiles and calculates the differential scores by summation along the profile bins.
+    </p>
+    <p>
+        For the pretrained models, we applied the Basenji [1] framework, which offers a 131k genomic sequence as input and models 4,229 sets of DNase, histone modification and transcription profiles collected from public databases including ENCODE [2], Roadmap
+        [3] and FANTOM5 [4]. The input sequences are one-hot encoded and reversely complemented stochastically before entering the convolution layers followed by dilated layers, and the output is a vector of bins corresponding to the input sequence range
+        with a 128-bp bin size. Each convolution layer contains batch normalization, max pooling and gelu as the activation function. Further detail of model architecture can refer to [1].
+    </p>
+    <p>
+        To elaborate the prediction, we mapped the available experiment types into functions of open-chromatin, expressed, enhancer, promoter, active and repressed, and applied multi-comparison test to find the significant functions for the corresponding mutations.
+        We've tested the pipeline with a list of validated type 2 diabetes (T2D) SNPs from [5] and found all SNPs pass the comparison test (p &#60 0.01).
+    </p>
+    <hr>
+    <p>
+        <ol>
+            <li>D. R. Kelley, Y. A. Reshef, M. Bileschi, D. Belanger, C. Y. McLean, and J. Snoek, "Sequential regulatory activity prediction across chromosomes with convolutional neural networks," (in eng), Genome research, vol. 28, no. 5, pp. 739-750, 2018,
+                doi: 10.1101/gr.227819.117.</li>
+            <li>E. P. C. J. Science, "The ENCODE (ENCyclopedia of DNA elements) project," vol. 306, no. 5696, pp. 636-640, 2004.</li>
+            <li>C. Roadmap Epigenomics et al., "Integrative analysis of 111 reference human epigenomes," Nature, vol. 518, no. 7539, pp. 317-30, Feb 19 2015, doi: 10.1038/nature14248.</li>
+            <li>S. Noguchi et al., "FANTOM5 CAGE profiles of human and mouse samples," Scientific Data, vol. 4, no. 1, p. 170112, 2017/08/29 2017, doi: 10.1038/sdata.2017.112</li>
+            <li>A. Wesolowska-Andersen et al., "Deep learning models predict regulatory variants in pancreatic islets and refine type 2 diabetes association signals," (in eng), Elife, vol. 9, Jan 27 2020.</li>
+        </ol>
+
+    </p>
+</div>
+
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "variants/layout.html" %} {% block body %} {% load static %}
+<style>
+    .center {
+        margin: auto;
+        width: 50%;
+        border: 3px solid green;
+        padding: 10px;
+    }
+</style>
+<div class="w3-container">
+    <h3>Help</h3>
+    <p>
+        <h4>Step 1. Input from homepage</h4>
+        <ul>
+            <li><b>Cell Type</b>: should be one keyword from a name of an organ/tissue such as pancreas, lung, gastrocnemius medialis, cardiac mesoderm, or a cell line such as GM12878, Hela, K562.</li>
+            <li><b>rsID</b>: could be a list of reference SNP ID numbers which are separated by a comma or a space.</li>
+            <li><b>Submit</b>: Click the "Submit" button to execute keyword search and record the SNPs to be tested.</li>
+        </ul>
+
+    </p>
+    <div class="center"><img src="/static/img/input.png" alt="Input"></div>
+    <p>
+        <h4>Step 2. Prepare for SNP prediction</h4>
+        <ul>
+            <li><b>Available Tasks</b>: the corresponding available <a href="https://github.com/calico/basenji">Basenji</a> pretrained models from DNase or histone modifications. If no tasks was found, please try to modify the input content. (check cell type
+                and rsid)
+            </li>
+            <li><b>Predict</b>: Click the "Predict" button to execute profiles prediction of available tasks with the reference allele and alternative allele. The alleles are prepared based on the SNP position in the center of 131kb-long DNA sequence. The
+                prediction process may take a few minutes considering the length of the SNP list.</li>
+
+        </ul>
+    </p>
+    <div class="center"><img src="/static/img/tasks.png" alt="Tasks"></div>
+    <p>
+        <h4>Step 3. SNP prediction result</h4>
+        <ul>
+            <li><b>Box plot</b>: The difference score of available tasks are calculated and mapped to six categories of chromatin functions: "open-chromatin", "expressed", "enhancer", "promoter", "active" and "repressed". Scores of the same category are gathered
+                in the box plot.</li>
+            <li><b>Heatmap</b>: Comparison of each functional difference is done by Conover's test. The result of pairwise significances are gathered in the heatmap in -log(p). The category with higher significance suggests the main function of the variant
+                effect.
+            </li>
+            <div><img src="/static/img/snp_prediction.png" alt="snp prediction" style="border: 3px solid green;padding: 10px;"></div>
+            <li><b>Menu</b>: The leftside menu column contains a "Mutation Map" and a "Return home". </li>
+            <ul>
+                <li><b>Mutation Map</b>: The list of target rsIDs is shown below.</li>
+                <li><b>rsIDs</b>: Click one of the rsID link will predict a mutation map of 40-bp flanking positions from the target SNP. Inside each position 3 reference-alternative difference scores are to be calculated. This process will take more time (about 5 min)
+                    compare with the single mutation task. The circle appears in the upper left conrner while waiting for the result.</li>
+                <li><b>Return home</b>: Go to the homepage to start a new prediction task.</li>
+            </ul>
+        </ul>
+    </p>
+    <p>
+        <h4>Step 4. Mutation map result</h4>
+        <ul>
+            <li><b>Mutation map</b>: Inside each position of the map, the color ‘blue’ indicates loss of function and ‘red’ indicates gain of function comparing with the reference allele of "white".</li>
+            <li><b>Conservation score</b>: The sequence logo is plotted with <a href="https://logomaker.readthedocs.io/en/stable/examples.html">LOGOmaker</a> by a transformation of the mutation map. The higher logo indicates the more conserved region of the
+                reference allele.</li>
+            <li><b>Menu</b>: The leftside menu column contains a "Return result" and a "Return home".</li>
+            <ul>
+                <li><b>Return result</b>: Return to the SNP prediction result page to discover more information.</li>
+                <li><b>Return home</b>: Go to the homepage to start a new prediction task.</li>
+            </ul>
+            <div><img src="/static/img/mutationMap.png" alt="mutation map" style="border: 3px solid green;padding: 10px;"></div>
+        </ul>
+    </p>
+
+
+</div>
+
+{% endblock %}
