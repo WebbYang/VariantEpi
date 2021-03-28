@@ -3,6 +3,7 @@ from django.shortcuts import render
 from django.http import HttpResponseRedirect, HttpResponse, JsonResponse
 from django import forms
 from datetime import datetime
+#from django.utils.safestring import mark_safe
 
 from util import get_basenji_sample_info, get_vcf_info, SAD_pipeline_v2, posthoc_p, plot_snp_p, score_box_plot, parse_rsid_v2, valid_rsid #parse_rsid
 import kipoi
@@ -15,7 +16,7 @@ record_snp_pk = {}
 class NewTaskForm(forms.Form):
     cell_type = forms.CharField(label="Cell Type", widget=forms.TextInput(attrs={'placeholder': 'pancreas'})) #, help_text='(One cell type, tissue or cell line) <br><br>'
     rsid = forms.CharField(label="rsID", widget=forms.TextInput(attrs={'placeholder': 'rs34584161, rs11708067'})) #, help_text='(Multiple ids are accepted with a separator as commas or spaces) <br><br>'
-
+    #rsid = forms.CharField(label=mark_safe("<br /> rsID or chromosomal position"), widget=forms.TextInput(attrs={'placeholder': 'rs34584161, rs11708067'}), help_text='(Multiple ids are accepted with a separator as commas or spaces)') #
 
 def map_cell(cell_type, login):
     #record_target_pk.append([])
@@ -78,7 +79,7 @@ def index(request):
                 "login": login_time,
                 })
 
-
+    
     # if a GET (or any other method) we'll create a blank form
     else:
         #form = NameForm()

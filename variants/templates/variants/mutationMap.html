@@ -20,7 +20,10 @@
 <div class="w3-container w3-cell">
     {% for img in img_paths %}
     <p>{{img}}</p>
-    <img src="{% static img %}" alt="mutation map"> {% endfor %}
+    <a href="{% static img %}" download>
+        <img src="{% static img %}" alt="mutation map"> 
+    </a>
+    {% endfor %}
 </div>
 
 {% endblock %}

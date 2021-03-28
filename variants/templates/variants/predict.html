@@ -47,13 +47,19 @@
 <div class="w3-container w3-cell">
     {% for img in box_img_path %}
     <p>{{img}}</p>
-    <img src="{% static img %}" alt="boxplot"> {% endfor %}
+    <a href="{% static img %}" download>
+        <img src="{% static img %}" alt="boxplot"> 
+    </a>
+    {% endfor %}
 </div>
 
 <div class="w3-container w3-cell">
     {% for img in compare_img_path %}
     <p>{{img}}</p>
-    <img src="{% static img %}" alt="posthoc"> {% endfor %}
+    <a href="{% static img %}" download>
+        <img src="{% static img %}" alt="posthoc"> 
+    </a>
+    {% endfor %}
 </div>
 
 {% endblock %}

@@ -71,6 +71,18 @@
             border-bottom-color: #79aec8;
             color: #79aec8;
         }
+	.header img {
+		float: left;
+		width: 70px;
+		height: 70px;
+		background: #555;
+	}
+
+	.header h1 {
+		 position: relative;
+		 top: 18px;
+		 left: 10px;
+	}
     </style>
     <!--<script src="{% static 'count.js' %}"></script>-->
 </head>
@@ -78,7 +90,10 @@
 <body>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <div class="w3-container w3-teal">
-        <h1>VariantEpi</h1>
+	    <div class="header">
+		    <img src="/static/img/c4Lab.png" alt="logo" />
+		    <h1>VariantEpi</h1>
+            </div>
         <div id="user-tools">
             <a href="{% url 'variants:index' %}">View home</a> /
 

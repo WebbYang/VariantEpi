@@ -14,6 +14,7 @@ import myvariant
 import logomaker as lm
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+import threading
 #from celery import shared_task
 #from celery_progress.backend import ProgressRecorder
 
@@ -158,6 +159,10 @@ def rand_transform(row):
 def score2logo(df_mat):
     for i in range(df_mat.shape[0]):
         df_mat.loc[i] = rand_transform(df_mat.loc[i].values)
+    max_val = df_mat.max().max()
+    if max_val>2:
+        df_mat = df_mat/max_val*2
+    return df_mat
 
 #@shared_task(bind=True)
 def SAD_pipeline_v2(extract_vcf, target_id, model, cell_type, out_path, type='single_snp'):
@@ -198,7 +203,7 @@ def SAD_pipeline_v2(extract_vcf, target_id, model, cell_type, out_path, type='si
                 fig, (ax1, ax) = plt.subplots(2, 1, figsize=(14,4))
                 cbar_ax = fig.add_axes([0.91, 0.1, .03, .4])
                 df = pd.DataFrame(rsid_map)
-                score2logo(df)
+                df = score2logo(df)
                 #print(df)
                 lm.Logo(df, ax=ax1)
 
@@ -252,7 +257,8 @@ def muta_score_v2(itvl_file, target_map, model): #, vcf_info
     
     # Build score table
     method = {k:{'A':[], 'T':[], 'C':[], 'G':[]} for k in target_map.keys()}
-            
+    #method = {k:{'A':np.zeros(41), 'T':np.zeros(41), 'C':np.zeros(41), 'G':np.zeros(41)} for k in target_map.keys()}
+    
     for pos_idx in range(41):
         batch['inputs'] = np.append(init_batch, init_batch, axis=0) # make it four
         batch['inputs'] = np.append(batch['inputs'], batch['inputs'], axis=0)
@@ -268,7 +274,7 @@ def muta_score_v2(itvl_file, target_map, model): #, vcf_info
             method[k]['T'].append(np.sum(alt_score1[1,:,v]-ref_i))            
             method[k]['C'].append(np.sum(alt_score2[0,:,v]-ref_i))
             method[k]['G'].append(np.sum(alt_score2[1,:,v]-ref_i))
-    
+
     return method
 
 def muta_score_1_pos(itvl_file, vcf_info, target_map, model, out_path, save=True):
@@ -388,9 +394,10 @@ def posthoc_p(score_dic, out_path):
         df_test = pd.DataFrame({'score':col_val,'group':col_label})
         rsid = rsid.split(' ')[0]+rsid.split(' ')[1][-3:]
         print(rsid)
-        df_test.to_csv(f'{out_path}/{rsid}_grp_socre.csv')
+        #df_test.to_csv(f'{out_path}/{rsid}_grp_socre.csv') # 20210316
         try:
             posthoc_df = ph.posthoc_conover(df_test, val_col='score', group_col='group', p_adjust = 'holm')
+            posthoc_df.to_csv(f'{out_path}/{rsid}_grp_socre.csv') # 20210316
             min_p_val, img_filename = p_val_heatmap(posthoc_df, out_path, rsid)
             img_list.append(img_filename.split('/static/')[-1])
             p_dic[rsid] = min_p_val
@@ -403,7 +410,8 @@ def p_val_heatmap(posthoc_df, out_path, rsid=None):
     #mask[np.triu_indices(len(mask))] = True
     mask = np.eye(posthoc_df.shape[0], dtype=bool)
     data = -np.log10(posthoc_df)
-    sns.heatmap(data, vmin = 0, vmax = data.max().max(), center = 0, cmap = 'coolwarm', annot = True, mask = mask)
+    maxd = data.max().max()
+    sns.heatmap(data, vmin = 0, vmax = maxd if maxd>=2 else 2, center = 0, cmap = 'coolwarm', annot = True, mask = mask)
     plt.xticks(rotation = 30)
     if rsid is not None:
         plt.title('Functional change significance pairwise test of \n'+rsid)

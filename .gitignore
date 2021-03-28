@@ -3,3 +3,6 @@ nohup.out
 data/hg19*
 db.sqlite3
 VariantEpi/settings.py
+.DS_Store
+.ipynb_checkpoints/
+.vscode/
