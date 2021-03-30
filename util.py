@@ -15,6 +15,7 @@ import logomaker as lm
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import threading
+import json
 #from celery import shared_task
 #from celery_progress.backend import ProgressRecorder
 
@@ -229,7 +230,32 @@ def SAD_pipeline_v2(extract_vcf, target_id, model, cell_type, out_path, type='si
 
         return rsid_method_map
     return result
-    
+
+#============20210330=============
+def find_max_func(dic_data):
+    '''
+    input: key: 'Open chromatin', 'Enhancer' ..., value: scores
+    output: max value key and value
+    '''   
+    max_func = ''
+    max_score = 0
+    for k, scores in dic_data.items():
+        for score in scores:
+            if abs(score)>abs(max_score):
+                max_score = score
+                max_func = k
+    return max_func, '{:.3f}'.format(max_score)
+
+def summary_score():
+    with open("variants/static/pred_out/score_1pos.pkl", 'rb') as h:
+        rsid_method_map = pickle.load(h)
+    summary_scores = []
+    for k, snp_scores in rsid_method_map.items():
+        max_func, max_score = find_max_func(snp_scores)
+        cell, rsid, pos = re.split('_| ', k)
+        summary_scores.append((cell, rsid, pos ,max_func, max_score)) 
+    return sorted(summary_scores, key=lambda x: abs(float(x[-1])), reverse=True)
+#============20210330=============
 
 def muta_score_v2(itvl_file, target_map, model): #, vcf_info
     '''
@@ -397,7 +423,8 @@ def posthoc_p(score_dic, out_path):
         #df_test.to_csv(f'{out_path}/{rsid}_grp_socre.csv') # 20210316
         try:
             posthoc_df = ph.posthoc_conover(df_test, val_col='score', group_col='group', p_adjust = 'holm')
-            posthoc_df.to_csv(f'{out_path}/{rsid}_grp_socre.csv') # 20210316
+            log_df = -np.log10(posthoc_df)
+            log_df.to_csv(f'{out_path}/{rsid}_group_p.csv', float_format='%.1f') # 20210316
             min_p_val, img_filename = p_val_heatmap(posthoc_df, out_path, rsid)
             img_list.append(img_filename.split('/static/')[-1])
             p_dic[rsid] = min_p_val
@@ -456,6 +483,13 @@ def score_box_plot(snp_grp_score, out_path):
         plt.savefig(filename)
         plt.close()        
         img_list.append(filename.split('/static/')[-1])
+        filename = f'{out_path}/{rsid}_box.csv'
+        outdic = {}
+        for k,v in snp_grp_score[rsid].items():
+            outdic[k] = ["{:.3f}".format(item) for item in [min(v), np.quantile(v,0.25), np.median(v), np.quantile(v,0.75), max(v)]]
+        
+        df_out = pd.DataFrame(outdic, index=['Min', '25%', '50%', '75%', 'Max'])
+        df_out.to_csv(filename)
 
     return img_list
 

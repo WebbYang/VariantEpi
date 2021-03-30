@@ -6,6 +6,7 @@ from datetime import datetime
 #from django.utils.safestring import mark_safe
 
 from util import get_basenji_sample_info, get_vcf_info, SAD_pipeline_v2, posthoc_p, plot_snp_p, score_box_plot, parse_rsid_v2, valid_rsid #parse_rsid
+from util import summary_score
 import kipoi
 from glob import glob
 
@@ -223,6 +224,15 @@ def help(request):
 
 def about(request):
     return render (request, f"variants/about.html")
+
+def summary(request, login):
+    #20210330
+    res = summary_score()
+    return render (request, f"variants/summary.html", {
+        "list": res,
+        "login":login,
+    })
+    #return JsonResponse(res, safe=False)
 
 #def progress_view(request, vcf_info, parse_info, model, out_path, type='multi_scan'):
 #    result = SAD_pipeline_v2.delay(vcf_info, parse_info, model, out_path, type)

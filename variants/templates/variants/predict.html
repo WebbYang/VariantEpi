@@ -18,15 +18,64 @@
         [].forEach.call(imgs, function(img) {
             var str_id = img.innerHTML.split("/")[1];
             if (str_id.includes("box")) {
-                img.innerHTML = "Box plot of " + str_id.split("_")[1] + " in " + str_id.split("_")[0];
+                img.innerHTML = "Difference score of " + str_id.split("_")[1] + " in " + str_id.split("_")[0];
             } else {
                 img.innerHTML = "Pairwise significance of " + str_id.split("_")[1] + " in " + str_id.split("_")[0];
             }
 
         });
     })
+    
 </script>
 
+<script src="/static/d3.min.js?v=3.2.8"></script>
+
+<script type="text/javascript"charset="utf-8">
+
+    d3.selection.prototype.last = function() {
+        var last = this.size() - 1;
+        return d3.select(this[0][last]);
+    };
+    function generate_csv(path, idx){
+        //path = path.split('group')[0]+'grp_socre.csv';
+        var img_tag = d3.select('#'+idx); //img tag
+        var box_tag = d3.select('#'+idx+'table');
+        if (box_tag.text().length==0) { //style.display !== "none"
+            path = path.split('.')[0]+'.csv';
+            d3.text(path, function(data) {
+                var parsedCSV = d3.csv.parseRows(data);
+                //var container = d3.selectAll('div');
+                //var lastp = container.last(); 
+                        
+                box_tag.append("table")
+                        .selectAll("tr")
+                        .data(parsedCSV).enter()
+                        .append("tr")
+                        .selectAll("td")
+                        .data(function(d) { return d; }).enter()
+                        .append("td")
+                        .text(function(d) { return d; });
+            });
+            //img_tag.attr("hidden",true);
+            //atag.style.display = "none";
+        }
+        else { 
+            //if (img_tag.attr("hidden")){
+            //    box_tag.attr("hidden",true);
+            //    img_tag.attr("hidden",null);
+            //}
+            if (box_tag.attr("hidden")) {
+                box_tag.attr("hidden",null);
+                //img_tag.attr("hidden",true);
+            }
+            else {
+                box_tag.attr("hidden",true);
+            }
+            
+        }
+    }
+
+</script>
 
 <h2 style="text-align:center">Prediction Results of One SNP Mutation</h2>
 
@@ -34,31 +83,41 @@
 <div class="loader" id="postCircle">
 </div>
 
-<div class="w3-container w3-cell w3-blue" style="width:10%">
+<div class="w3-container w3-cell w3-blue" style="width:15%">
     <h3>Menu</h3>
     <hr>
     <h5>Mutation Map</h5>
+    <ul>
     {% for rsid in rsid_list %}
-    <a onclick="showCircle()" href="{% url 'variants:mutationMap' rsid login %}">{{rsid}}</a> {% endfor %}
+    <li><a onclick="showCircle()" href="{% url 'variants:mutationMap' rsid login %}">{{rsid}}</a> </li>
+    {% endfor %}
+    </ul>
     <hr>
+    <a href="{% url 'variants:summary' login %}">Summary</a><br>
     <a href="{% url 'variants:index' %}">Return home</a>
 </div>
 
 <div class="w3-container w3-cell">
     {% for img in box_img_path %}
     <p>{{img}}</p>
-    <a href="{% static img %}" download>
+    <a id="box{{ forloop.counter }}" href="{% static img %}" download>
         <img src="{% static img %}" alt="boxplot"> 
     </a>
+    <div id="box{{ forloop.counter }}table"></div>
+    <button onclick="generate_csv('{% static img %}', 'box{{ forloop.counter }}')">Read table</button>
+    
     {% endfor %}
 </div>
 
-<div class="w3-container w3-cell">
+<div class="w3-container w3-cell" >
     {% for img in compare_img_path %}
     <p>{{img}}</p>
-    <a href="{% static img %}" download>
+    <a id="pval{{ forloop.counter }}" href="{% static img %}" download>
         <img src="{% static img %}" alt="posthoc"> 
     </a>
+    <div id="pval{{ forloop.counter }}table"></div>
+    <button onclick="generate_csv('{% static img %}', 'pval{{ forloop.counter }}')">Read table</button>  
+    
     {% endfor %}
 </div>
 

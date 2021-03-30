@@ -11,8 +11,9 @@
 </script>
 <h2 style="text-align:center">Mutation Map</h2>
 
-<div class="w3-container w3-cell w3-blue" style="width:10%">
+<div class="w3-container w3-cell w3-blue" style="width:15%">
     <h3>Menu</h3>
+    <hr>
     <a href="{% url 'variants:predict' login %}">Return results</a>
     <a href="{% url 'variants:index' %}">Return home</a>
 </div>
@@ -21,7 +22,7 @@
     {% for img in img_paths %}
     <p>{{img}}</p>
     <a href="{% static img %}" download>
-        <img src="{% static img %}" alt="mutation map"> 
+        <img class="muta" src="{% static img %}" alt="mutation map"> 
     </a>
     {% endfor %}
 </div>

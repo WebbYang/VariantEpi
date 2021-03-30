@@ -7,4 +7,5 @@ urlpatterns = [
     path('mutationMap/<str:rsid>/<str:login>', views.mutationMap, name='mutationMap'), #<str:rsid>
     path('help', views.help, name='help'),
     path('about', views.about, name='about'),
+    path('summary/<str:login>', views.summary, name='summary'),
 ]
