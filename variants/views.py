@@ -117,7 +117,8 @@ def predict(request, login):
     found_list = [item for item in glob(f'variants/static/pred_out/{cell_type}_rs*_box.png')]
     found_list_p = [item for item in glob(f'variants/static/pred_out/{cell_type}_rs*_group_p.png')]
     done_list = [] 
-    done_list_p = [] 
+    done_list_p = []
+     
     if len(found_list)>0:
         done_list = [item for item in found_list if item.split('/')[-1].split('_')[1].split(' ')[0] in all_rsid]
         done_list_p = [item for item in found_list_p if item.split('/')[-1].split('_')[1].split('>')[0][:-1] in all_rsid]
@@ -129,8 +130,8 @@ def predict(request, login):
         #input(compare_img_path)
         return render (request, "variants/predict.html", {
             "rsid_list": all_rsid,
-            "box_img_path": box_img_path,
-            "compare_img_path": compare_img_path,
+            "box_img_path": sorted(box_img_path),
+            "compare_img_path": sorted(compare_img_path),
             "login":login,
             })
 
@@ -164,14 +165,14 @@ def predict(request, login):
     #    img_path.append(img1)
     #    img_path.append(img2)
 
-    if len(p_vals)>10:
-        plot_snp_p(p_vals, out_path)
+    #if len(p_vals)>10:
+        #plot_snp_p(p_vals, out_path, login)
 
     return render(request, "variants/predict.html", {
         #"img_path": img_path,
         "rsid_list": all_rsid,
-        "box_img_path": box_img_path,
-        "compare_img_path": compare_img_path,
+        "box_img_path": sorted(box_img_path),
+        "compare_img_path": sorted(compare_img_path),
         "login":login,
         })
 
@@ -227,10 +228,12 @@ def about(request):
 
 def summary(request, login):
     #20210330
-    res = summary_score()
+    res = summary_score()   
+    plot_snp_p(res, "variants/static/pred_out", login)
     return render (request, f"variants/summary.html", {
         "list": res,
         "login":login,
+        "img": f"pred_out/Snps_p_summary_{login}.png"
     })
     #return JsonResponse(res, safe=False)
 

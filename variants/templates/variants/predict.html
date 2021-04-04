@@ -16,9 +16,11 @@
     document.addEventListener('DOMContentLoaded', function() {
         var imgs = document.querySelectorAll("p");
         [].forEach.call(imgs, function(img) {
-            var str_id = img.innerHTML.split("/")[1];
+            const str_id = img.innerHTML.split("/")[1];
+            const snp_info = str_id.split("_")[1].split(' ');
             if (str_id.includes("box")) {
-                img.innerHTML = "Difference score of " + str_id.split("_")[1] + " in " + str_id.split("_")[0];
+                img.innerHTML = "Difference score of " + snp_info[0]
+                + snp_info[1].slice(-6) + " in " + str_id.split("_")[0];
             } else {
                 img.innerHTML = "Pairwise significance of " + str_id.split("_")[1] + " in " + str_id.split("_")[0];
             }

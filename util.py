@@ -14,8 +14,10 @@ import myvariant
 import logomaker as lm
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import threading
-import json
+from glob import glob
+from matplotlib import cm
+#import threading
+#import json
 #from celery import shared_task
 #from celery_progress.backend import ProgressRecorder
 
@@ -206,8 +208,8 @@ def SAD_pipeline_v2(extract_vcf, target_id, model, cell_type, out_path, type='si
                 df = pd.DataFrame(rsid_map)
                 df = score2logo(df)
                 #print(df)
-                lm.Logo(df, ax=ax1)
-
+                cons_logo = lm.Logo(df, ax=ax1)
+                cons_logo.ax.set_ylim([0, 2])
                 df = pd.DataFrame(np.array(list(rsid_map.values())),index=rsid_map.keys())                
                 df = df/960
                 sns.heatmap(df,cmap="RdBu_r",center=0,ax=ax,cbar_ax=cbar_ax)
@@ -232,29 +234,49 @@ def SAD_pipeline_v2(extract_vcf, target_id, model, cell_type, out_path, type='si
     return result
 
 #============20210330=============
-def find_max_func(dic_data):
+def find_max_func(dic_data, df_pvals):
     '''
     input: key: 'Open chromatin', 'Enhancer' ..., value: scores
     output: max value key and value
     '''   
     max_func = ''
     max_score = 0
-    for k, scores in dic_data.items():
+    df_v = df_pvals.max()
+    max_p = df_v.max()
+    func_list = [item for item in df_v[df_v==df_v.max()].index]
+    for k in func_list:
+        scores = [abs(item) for item in dic_data[k]]
+        score = dic_data[k][scores.index(max(scores))]
+        if abs(score)>abs(max_score):
+            max_score = score
+            max_func = k
+
+    '''for k, scores in dic_data.items():
         for score in scores:
             if abs(score)>abs(max_score):
                 max_score = score
                 max_func = k
-    return max_func, '{:.3f}'.format(max_score)
+    max_p = df_pvals[max_func].max()'''
+    if max_p < 2:
+        max_p = "No significance"
+    else:
+        max_p = '{:.1f}'.format(max_p)
+    return max_func, '{:.3f}'.format(max_score), max_p
 
 def summary_score():
     with open("variants/static/pred_out/score_1pos.pkl", 'rb') as h:
         rsid_method_map = pickle.load(h)
     summary_scores = []
     for k, snp_scores in rsid_method_map.items():
-        max_func, max_score = find_max_func(snp_scores)
+        # 20210402
+        for file in glob("variants/static/pred_out/"+k.split(' ')[0]+'*_group_p.csv'):
+            df_pvals = pd.read_csv(file, index_col=0)
+
+        max_func, max_score, max_p = find_max_func(snp_scores, df_pvals)
         cell, rsid, pos = re.split('_| ', k)
-        summary_scores.append((cell, rsid, pos ,max_func, max_score)) 
-    return sorted(summary_scores, key=lambda x: abs(float(x[-1])), reverse=True)
+        summary_scores.append((cell, rsid, pos ,max_func, max_score, max_p)) 
+    
+    return sorted(summary_scores, key=lambda x: abs(float(x[-2])), reverse=True)
 #============20210330=============
 
 def muta_score_v2(itvl_file, target_map, model): #, vcf_info
@@ -453,21 +475,42 @@ def p_val_heatmap(posthoc_df, out_path, rsid=None):
     plt.close()
     return data.max().max(), img_filename
 
-def plot_snp_p(p_dics, out_path):
-    keys, p_list = [], []
-    for k, v in p_dics.items():
-        if ':' in k:
-            k = k.split(' ')[0]
-        keys.append(k)
-        p_list.append(v)
-    plt.bar(np.arange(len(p_list)), p_list)
-    plt.xticks(np.arange(len(p_list)),labels=keys,rotation=90)
-    plt.ylabel('-log(p) of variant')
-    plt.hlines(2,0,len(p_list),linestyles='dashed',colors='cyan')
-    plt.title('Most significant difference between chromatin states snp score')
+def plot_snp_p(res, out_path, login):
+    rsids = [item[1] for item in res]
+    pvals = [float(item[-1]) for item in res]
+    grps = [item[3] for item in res]
+    scores = [float(item[4]) for item in res]
+
+    c_map = {'Open chromatin':0,'Promoter':1,'Enhancer':2,'Active':3, 'Repressed':4, 'expression':5}
+    r_cmap = {v:k for k,v in c_map.items()}
+    colors = cm.get_cmap('hsv')
+    x = np.arange(len(rsids))
+    y = np.array(scores)
+    c = np.array([c_map[g] for g in grps])
+    s = np.array([p*5 for p in pvals])
+        
+    p_list = np.array(pvals)
+        
+    fig, ax = plt.subplots()
+    
+    ax.bar(np.arange(len(p_list)), p_list)
+    plt.xticks(np.arange(len(p_list)),labels=rsids,rotation=90)
+    ax.set_ylabel('-log(p) of variant')
+    plt.hlines(2,-1,len(p_list),linestyles='dashed',colors='k')#colors='cyan'
+    plt.title('Most Significant Difference score of each Variant')
+    plt.tight_layout()
+    
+    ax.bar(np.arange(len(p_list))[y>0], p_list[y>0])
+    ax2 = ax.twinx()
+    for i in range(6):
+        if len(y[c==i])!=0:
+            ax2.scatter(x[c==i], y[c==i], c=colors(c[c==i]/6), s=s[c==i], label=r_cmap[i])
+            ax2.legend() 
+    ax2.set_ylabel('gain/loss of function')
+    plt.xlim(-1,len(p_list))
     #plt.show()
     plt.tight_layout()
-    plt.savefig(f'{out_path}/Snps_p_summary.png')
+    plt.savefig(f'{out_path}/Snps_p_summary_{login}.png')
     plt.close()
 
 def score_box_plot(snp_grp_score, out_path):

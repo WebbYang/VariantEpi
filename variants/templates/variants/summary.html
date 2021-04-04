@@ -39,14 +39,15 @@
 </div>
 
 <div class="w3-container w3-cell">
-    <table style="width:100%; font-size:18px">
-    <tr>
+    <table style="width:100%; font-size:14px">
+    <tr style="background-color:Gainsboro">
         <td>Cell Type</td>
         <td>rsID</td>
         <td>Position</td>
         <td>Function</td>
         <td>Difference Score</td>
-    </tr
+        <td>log(p)</td>
+    </tr>
     {% for item in list %}
         <tr>
             {% for data in item %}
@@ -55,6 +56,10 @@
         </tr>
     {% endfor %}  
     </table>
-    </div>
+    <br><br>
+    <img src="{% static img %}" alt="summary" class="center">
+</div>
+
+
 
 {% endblock %}
