@@ -9,6 +9,7 @@ from util import get_basenji_sample_info, get_vcf_info, SAD_pipeline_v2, posthoc
 from util import summary_score
 import kipoi
 from glob import glob
+import os
 
 record_target_pk = {}
 record_snp_pk = {}
@@ -76,6 +77,7 @@ def index(request):
             #return HttpResponseRedirect('/thanks/')
             return render(request, 'variants/index.html', {
                 "bs_info": bs_info,
+                "rsids": rsids,
                 "form": form,
                 "login": login_time,
                 })
@@ -96,6 +98,7 @@ def index(request):
             pass
         return render(request, "variants/index.html", {
             "bs_info": [],
+            "rsids": [],
             "form": NewTaskForm(),
             "login": login_time,
             })
@@ -114,6 +117,9 @@ def predict(request, login):
     #all_list = [i.rsid for i in Snp.objects.all()]
     cell_type = target.objects.get(pk=record_target_pk[login][0]).cell
     all_rsid = [Snp.objects.get(id=i).rsid for i in record_snp_pk[login]]
+     # 20210524 update login info to design for existed cases of pkl
+    #login2 = login+'_'+cell_type+'_'+all_rsid[0]+'_'+str(len(all_rsid))
+
     found_list = [item for item in glob(f'variants/static/pred_out/{cell_type}_rs*_box.png')]
     found_list_p = [item for item in glob(f'variants/static/pred_out/{cell_type}_rs*_group_p.png')]
     done_list = [] 
@@ -123,17 +129,24 @@ def predict(request, login):
         done_list = [item for item in found_list if item.split('/')[-1].split('_')[1].split(' ')[0] in all_rsid]
         done_list_p = [item for item in found_list_p if item.split('/')[-1].split('_')[1].split('>')[0][:-1] in all_rsid]
            
-
+    # if all rsids are already existed
     if len(done_list)==len(all_rsid):
         box_img_path = [item.split('/static/')[-1] for item in done_list] #[glob(f'variants/static/pred_out/{i}*_box.png')[0].split('/static/')[-1] for i in Snp.objects.all()]
         compare_img_path = [item.split('/static/')[-1] for item in done_list_p]#[glob(f'variants/static/pred_out/{i}*_group_p.png')[0].split('/static/')[-1] for i in Snp.objects.all()]
         #input(compare_img_path)
-        return render (request, "variants/predict.html", {
-            "rsid_list": all_rsid,
-            "box_img_path": sorted(box_img_path),
-            "compare_img_path": sorted(compare_img_path),
-            "login":login,
-            })
+        
+        # 20210524 update login name to the existing one
+        existing_pkl = [filename for filename in glob(f'variants/static/pred_out/*_{cell_type}_{all_rsid[0]}_{len(all_rsid)}_score_1pos.pkl')]
+        if len(existing_pkl)>0:
+            #login2 = existing_pkl[0].split('/')[-1][:-15]
+            dst = f'variants/static/pred_out/{login}_{cell_type}_{all_rsid[0]}_{len(all_rsid)}_score_1pos.pkl'
+            os.rename(existing_pkl[0], dst)
+            return render (request, "variants/predict.html", {
+                "rsid_list": all_rsid,
+                "box_img_path": box_img_path, #sorted(
+                "compare_img_path": compare_img_path, #sorted(
+                "login":login,
+                })
 
     # 1. load vcf info
     vcf_info = get_vcf_info(all_rsid) #[i.rsid for i in Snp.objects.all()]  
@@ -157,7 +170,7 @@ def predict(request, login):
     #    print(f"{k}: {v}")
     out_path = 'variants/static/pred_out'
     #input(f"target id list: {record_target_pk}")
-    snp_grp_score = SAD_pipeline_v2(vcf_info, parse_info, model, cell_type, out_path=out_path)
+    snp_grp_score = SAD_pipeline_v2(login, vcf_info, parse_info, model, cell_type, out_path=out_path)
     box_img_path = score_box_plot(snp_grp_score, out_path)
     p_vals, compare_img_path = posthoc_p(snp_grp_score, out_path)
     #img_path = []
@@ -174,6 +187,7 @@ def predict(request, login):
         "box_img_path": sorted(box_img_path),
         "compare_img_path": sorted(compare_img_path),
         "login":login,
+        #"login2":login2
         })
 
 def mutationMap(request, rsid, login):
@@ -208,7 +222,7 @@ def mutationMap(request, rsid, login):
             parse_info[k].append(v)
     
     out_path = 'variants/static/pred_out'
-    _ = SAD_pipeline_v2(vcf_info, parse_info, model, cell_type, out_path=out_path, type='multi_scan')
+    _ = SAD_pipeline_v2(login, vcf_info, parse_info, model, cell_type, out_path=out_path, type='multi_scan')
     #progress_view(request, vcf_info, parse_info, model, out_path, type='multi_scan')
     #print('snp_grp_score: ', snp_grp_score)
     img_paths = []
@@ -228,7 +242,7 @@ def about(request):
 
 def summary(request, login):
     #20210330
-    res = summary_score()   
+    res = summary_score(login)   
     plot_snp_p(res, "variants/static/pred_out", login)
     return render (request, f"variants/summary.html", {
         "list": res,

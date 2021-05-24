@@ -1,5 +1,14 @@
 {% extends "variants/layout.html" %} {% block body %} {% load static %}
 
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+
+<style>
+    th{ 
+        color:#fff;
+            }
+</style>
+
 <script>
     function waiting_sign() {
         var divbox = document.getElementById('postCircle');
@@ -10,16 +19,87 @@
         alert('Start Loading! May take a few minutes...');
         document.getElementById("postCircle").style.display = "block";
     }
+    //var myArray = []; 
+    function readTable(){
+        var myArray = [];
+        let columns = ['CellType','rsID','Position','Function','DifferenceScore','logp'];
+        var t = document.getElementById('myTable');
+        var d = t.getElementsByTagName("tr");
+        console.log(d.length);
+        var di;
+        for (i = 0; i < d.length; i++) {
+            var r = d[i].getElementsByTagName("td");
+            var item = {};
+            var j = 0;
+            for (k of columns){
+                if (k==="DifferenceScore" || k==="logp") {
+                    item[k] = parseFloat(r[j].innerHTML);
+                }
+                else {
+                    item[k] = r[j].innerHTML;
+                }
+                j++;
+            }
+            console.log(item);
+            myArray.push(item);
+        }
+        return myArray
+
+    }
+    //myArray = document.addEventListener('DOMContentLoaded', readTable);
+
+    function buildTable(data){
+		var table = document.getElementById('myTable')
+		table.innerHTML = ''
+		for (var i = 0; i < data.length; i++){
+			var row = `<tr>
+							<td>${data[i].CellType}</td>
+							<td>${data[i].rsID}</td>
+							<td>${data[i].Position}</td>
+                            <td>${data[i].Function}</td>
+                            <td>${data[i].DifferenceScore}</td>
+                            <td>${data[i].logp}</td>
+					  </tr>`
+			table.innerHTML += row
+
+
+		}
+	}
+    $(document).ready(function() {
+        var myArray = readTable();
+        $('th').on('click', function(){
+            var column = $(this).data('column')
+            var order = $(this).data('order')
+            var text = $(this).html()
+            text = text.substring(0, text.length - 1)
+
+            if(order == 'desc'){
+                $(this).data('order', "asc")
+                myArray = myArray.sort((a,b) => a[column] > b[column] ? 1 : -1)
+                text += '&#9660'
+
+            }else{
+                $(this).data('order', "desc")
+                myArray = myArray.sort((a,b) => a[column] < b[column] ? 1 : -1)
+                text += '&#9650'
+
+            }
+            $(this).html(text)
+            buildTable(myArray)
+            console.log("built-------");
+        })
+    });
 </script>
 
-<h2 style="text-align:center">Summary of Variant Difference Score</h2>
+
+<h2 style="text-align:center">Summary of Differential Scores of Variants</h2>
 
 <div class="loader" id="postCircle">
 </div>
 
 <div class="w3-container w3-cell w3-blue" style="width:15%; height:100%">
     <h3>Menu</h3>
-    <hr><h5>Mutation Map</h5><hr>    
+    <hr><h5>Mutation Map</h5>   
     <ul>
     {% for item in list %}
            {% for data in item %}
@@ -31,7 +111,7 @@
     {% endfor %}
     </ul>
     <hr>
-    <a href="{% url 'variants:predict' login %}">Return results</a>
+    <a href="{% url 'variants:predict' login %}">Return results</a><br>
     <a href="{% url 'variants:index' %}">Return home</a>
     <br><br><br><br><br>
     <br><br><br><br><br>
@@ -39,22 +119,24 @@
 </div>
 
 <div class="w3-container w3-cell">
-    <table style="width:100%; font-size:14px">
-    <tr style="background-color:Gainsboro">
-        <td>Cell Type</td>
-        <td>rsID</td>
-        <td>Position</td>
-        <td>Function</td>
-        <td>Difference Score</td>
-        <td>log(p)</td>
+    <table class="table table-striped" style="width:100%; font-size:14px">
+    <tr class="bg-info" style="background-color:rgb(51, 50, 50)">
+        <th data-column="CellType" data-order="desc">Cell Type &#9650</th>
+        <th data-column="rsID" data-order="desc">rsID &#9650</th>
+        <th data-column="Position" data-order="desc">Position &#9650</th>
+        <th data-column="Function" data-order="desc">Function &#9650</th>
+        <th data-column="DifferenceScore" data-order="desc">Differential Score &#9650</th>
+        <th data-column="logp" data-order="desc">-log(p) &#9650</th>
     </tr>
-    {% for item in list %}
-        <tr>
-            {% for data in item %}
-                <td>{{data}}</td>
-            {% endfor %}
-        </tr>
-    {% endfor %}  
+    <tbody id="myTable">
+        {% for item in list %}
+            <tr>
+                {% for data in item %}
+                    <td>{{data}}</td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+    </tbody>  
     </table>
     <br><br>
     <img src="{% static img %}" alt="summary" class="center">

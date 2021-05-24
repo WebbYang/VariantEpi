@@ -116,7 +116,8 @@ def get_vcf_info(file_path, save=False):
         #pbar.set_description("Processing %s" % rsid)
         #bool_index = ref_vcf['variants/ID']==rsid
         try:
-            record = ref_vcf.query('dbsnp.rsid:'+rsid, fields='dbsnp')
+            #record = ref_vcf.query('dbsnp.rsid:'+rsid, fields='dbsnp')
+            record = ref_vcf.query(rsid, scopes='dbsnp.rsid')
             pos = record['hits'][0]['dbsnp']['hg19']['end'] # for snp, either start or end is fine
             chrm, ref, alt = [record['hits'][0]['dbsnp'][item] for item in ['chrom', 'ref', 'alt']]
             res.append([chrm, pos, rsid, ref, alt])           
@@ -159,16 +160,28 @@ def rand_transform(row):
     new_row[zero_idx] = np.log2(-sum(row[row<0])+1.5)
     return new_row
 
-def score2logo(df_mat):
+def ref_transform(row):
+    zero_idx = row==0
+    new_row = np.zeros(4)
+    new_row[zero_idx] = 1
+    return new_row
+
+def pn_transform(row):
+    zero_idx = row==0
+    new_row = row.copy()
+    #new_row[zero_idx] = 2
+    return new_row
+
+def score2logo(df_mat, trans_type = pn_transform):
     for i in range(df_mat.shape[0]):
-        df_mat.loc[i] = rand_transform(df_mat.loc[i].values)
+        df_mat.loc[i] = trans_type(df_mat.loc[i].values)
     max_val = df_mat.max().max()
     if max_val>2:
         df_mat = df_mat/max_val*2
     return df_mat
 
 #@shared_task(bind=True)
-def SAD_pipeline_v2(extract_vcf, target_id, model, cell_type, out_path, type='single_snp'):
+def SAD_pipeline_v2(login, extract_vcf, target_id, model, cell_type, out_path, type='single_snp'):
     '''
     input: 
         extract_vcf:[chr, location, rsid, ref, alt], 
@@ -203,13 +216,20 @@ def SAD_pipeline_v2(extract_vcf, target_id, model, cell_type, out_path, type='si
         if type=='multi_scan':
             rsid_method_map[rsid] = muta_score_v2('data/subitem_itvl.bed', target_id, model)#, [item]
             for k, rsid_map in rsid_method_map[rsid].items():
-                fig, (ax1, ax) = plt.subplots(2, 1, figsize=(14,4))
+                #fig, (ax1, ax) = plt.subplots(2, 1, figsize=(14,4))
+                fig, (ax2, ax1, ax) = plt.subplots(3, 1, figsize=(15,5), gridspec_kw={'height_ratios': [0.5,2.5,2]})
                 cbar_ax = fig.add_axes([0.91, 0.1, .03, .4])
                 df = pd.DataFrame(rsid_map)
-                df = score2logo(df)
-                #print(df)
+                ref_logo = lm.Logo(score2logo(df, trans_type = ref_transform), ax=ax2)
+                ref_logo.ax.set_xticks([])
+                ref_logo.ax.set_yticks([])
+                ax2.axis("off")
+                ref_logo.ax.text(-1.5, 0.6, 'Ref', rotation=90)
+
+                df = score2logo(pd.DataFrame(rsid_map))
                 cons_logo = lm.Logo(df, ax=ax1)
-                cons_logo.ax.set_ylim([0, 2])
+                cons_logo.ax.set_xticks([])
+                #cons_logo.ax.set_ylim([0, 2])
                 df = pd.DataFrame(np.array(list(rsid_map.values())),index=rsid_map.keys())                
                 df = df/960
                 sns.heatmap(df,cmap="RdBu_r",center=0,ax=ax,cbar_ax=cbar_ax)
@@ -227,7 +247,7 @@ def SAD_pipeline_v2(extract_vcf, target_id, model, cell_type, out_path, type='si
         #progress_recorder.set_progress(i + 1, total_tasks)
     
     if type=='single_snp':
-        with open(f'{out_path}/score_1pos.pkl', 'wb') as h:
+        with open(f'{out_path}/{login}_score_1pos.pkl', 'wb') as h:
             pickle.dump(rsid_method_map, h, protocol=pickle.HIGHEST_PROTOCOL)
 
         return rsid_method_map
@@ -263,8 +283,9 @@ def find_max_func(dic_data, df_pvals):
         max_p = '{:.1f}'.format(max_p)
     return max_func, '{:.3f}'.format(max_score), max_p
 
-def summary_score():
-    with open("variants/static/pred_out/score_1pos.pkl", 'rb') as h:
+def summary_score(login):
+    filename = glob(f"variants/static/pred_out/{login}*_score_1pos.pkl")[0]
+    with open(filename, 'rb') as h:
         rsid_method_map = pickle.load(h)
     summary_scores = []
     for k, snp_scores in rsid_method_map.items():
@@ -276,7 +297,7 @@ def summary_score():
         cell, rsid, pos = re.split('_| ', k)
         summary_scores.append((cell, rsid, pos ,max_func, max_score, max_p)) 
     
-    return sorted(summary_scores, key=lambda x: abs(float(x[-2])), reverse=True)
+    return sorted(summary_scores, key=lambda x: float(x[-2]), reverse=True) #abs(float(x[-2]))
 #============20210330=============
 
 def muta_score_v2(itvl_file, target_map, model): #, vcf_info
@@ -477,7 +498,7 @@ def p_val_heatmap(posthoc_df, out_path, rsid=None):
 
 def plot_snp_p(res, out_path, login):
     rsids = [item[1] for item in res]
-    pvals = [float(item[-1]) for item in res]
+    pvals = [float(item[-1]) if item[-1]!='No significance' else 0 for item in res]
     grps = [item[3] for item in res]
     scores = [float(item[4]) for item in res]
 
@@ -554,10 +575,24 @@ def parse_rsid_v2(line):
 def valid_rsid(rsids):
     res = []
     ref_vcf = myvariant.MyVariantInfo()
+
+    # deal with non rsid query, ex: genes
     for rsid in rsids:
-        record = ref_vcf.query('dbsnp.rsid:'+rsid, fields='dbsnp')
-        if len(record['hits'])>0:
-            res.append(rsid)
-        else:
+        if rsid[:2]!='rs':
+            rsids.remove(rsid)
+            record = ref_vcf.query(rsid, scopes='dbsnp.rsid')
+            for item in record['hits']:
+                if 'dbsnp' in item.keys():
+                    if 'rsid' in item['dbsnp']:
+                        res.append(item['dbsnp']['rsid'])
+
+
+    for rsid in rsids:
+        #record = ref_vcf.query('dbsnp.rsid:'+rsid, fields='dbsnp')
+        record = ref_vcf.query(rsid, scopes='dbsnp.rsid')
+        #if len(record['hits'])>0:
+        try:
+            res.append(record['hits'][0]['dbsnp']['rsid'])
+        except:
             print(rsid+" not found!")
     return res

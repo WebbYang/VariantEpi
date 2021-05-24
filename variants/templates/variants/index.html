@@ -27,14 +27,31 @@
         {% csrf_token %} {{ form }}
         <input type="submit" value="Submit">
     </form>
-    <h3>Available Tasks</h3>
-    <ul>
-        {% for task in bs_info %}
-        <li>{{ task }}</li>
-        {% empty %}
-        <li>No tasks.</li>
-        {% endfor %}
-    </ul>
+    
+    <div class="w3-container w3-cell" style="width: 70%">
+        <p>
+            <h3>Available Tasks</h3>
+            <ul>
+                {% for task in bs_info %}
+                <li>{{ task }}</li>
+                {% empty %}
+                <li>No tasks.</li>
+                {% endfor %}
+            </ul>
+        </p>
+    </div>
+    <div class="w3-container w3-cell">
+        <p>
+            <h3>Available rsIDs</h3>
+            <ul>
+                {% for rsid in rsids %}
+                <li>{{ rsid }}</li>
+                {% empty %}
+                <li>No rsid.</li>
+                {% endfor %}
+            </ul>
+        </p>      
+    </div>
 
     <form action="{% url 'variants:predict' login %}">
         <!--<button id="Calculate">Calculate</button>-->

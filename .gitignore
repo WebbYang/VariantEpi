@@ -9,3 +9,4 @@ VariantEpi/settings.py
 .DS_Store
 .ipynb_checkpoints/
 .vscode/
+variants/static/bak/*

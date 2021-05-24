@@ -11,14 +11,14 @@
 </script>
 <h2 style="text-align:center">Mutation Map</h2>
 
-<div class="w3-container w3-cell w3-blue" style="width:15%">
+<div class="w3-container w3-cell w3-blue" style="width:20%">
     <h3>Menu</h3>
     <hr>
-    <a href="{% url 'variants:predict' login %}">Return results</a>
+    <a href="{% url 'variants:predict' login %}">Return results</a><br>
     <a href="{% url 'variants:index' %}">Return home</a>
 </div>
 
-<div class="w3-container w3-cell">
+<div class="w3-container w3-cell" style="width:100%">
     {% for img in img_paths %}
     <p>{{img}}</p>
     <a href="{% static img %}" download>

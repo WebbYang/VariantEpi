@@ -77,17 +77,17 @@
             border-bottom-color: #79aec8;
             color: #79aec8;
         }
-	.header img {
+	.left {
 		float: left;
-		width: 70px;
-		height: 70px;
+		width: 60px;
+		height: 60px;
 		background: #555;
 	}
 
 	.header h1 {
 		 position: relative;
 		 top: 18px;
-		 left: 10px;
+		 left: 5%;
 	}   
     table {
         border-collapse: collapse;
@@ -100,11 +100,19 @@
         padding: 5px;
     }
 
+    .right {
+        position: absolute;
+        right: 10px;
+        top:10px;
+        width: 250px;
+        background: #555;
+    }
+
     .center {
         display: block;
         margin-left: auto;
         margin-right: auto;
-        width: 80%;
+        width: 100%;
     }
     </style>
     <!--<script src="{% static 'count.js' %}"></script>-->
@@ -114,9 +122,11 @@
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <div class="w3-container w3-teal">
 	    <div class="header">
-		    <img src="/static/img/c4Lab.png" alt="logo" />
+		    <img src="/static/img/c4Lab.png" alt="logo" class="left"/>
 		    <h1>VariantEpi</h1>
-            </div>
+            <img src="/static/img/c4Lab2.png" alt="logo2" class="right"/>
+            
+        </div>
         <div id="user-tools">
             <a href="{% url 'variants:index' %}">View home</a> /
 
