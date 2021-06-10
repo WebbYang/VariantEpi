@@ -10,3 +10,4 @@ VariantEpi/settings.py
 .ipynb_checkpoints/
 .vscode/
 variants/static/bak/*
+variants/views.py_bak

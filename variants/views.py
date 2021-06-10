@@ -56,7 +56,7 @@ def index(request):
             cell = form.cleaned_data["cell_type"]
             bs_info = map_cell(cell, login_time)
             rsid = form.cleaned_data["rsid"]
-            rsids = valid_rsid(parse_rsid_v2(rsid)) #parse_rsid
+            rsids = parse_rsid_v2(rsid) #valid_rsid() #parse_rsid
             print(rsids)
             if len(rsids) ==0:
                 # clear bs_info if rsid not available
@@ -64,12 +64,22 @@ def index(request):
             else:
                 #record_snp_pk.append([])
                 existing_rsids = [i.rsid for i in Snp.objects.all()]
-                for rsid in rsids:
+                vcf_info = get_vcf_info(rsids)
+                rsids = []
+                for info in vcf_info:
+                    chrm, pos, rsid, ref, alt = info
+                    rsids.append(rsid)
                     if rsid not in existing_rsids:
-                        n = Snp.objects.create(rsid = rsid)
+                        n = Snp.objects.create(chrm=chrm, pos=pos, rsid=rsid, ref=ref, alt=alt)
                     #record_snp_pk[-1].append(n.id)
                     else:
-                        n = Snp.objects.get(rsid=rsid)
+                        n = Snp.objects.filter(rsid=rsid)
+                        if len(n)>1:
+                            for ni in n[:len(n)-1]: #cannot use negative indexing here; query set
+                                ni.delete()
+                        if n[0].chrm=='':
+                            n.update(chrm=chrm, pos=pos, rsid=rsid, ref=ref, alt=alt)
+                        n = n[0]
                     record_snp_pk[login_time].append(n.id)
             
             #request.session["form"] = {"cell":cell, "rsid":rsid}
@@ -136,10 +146,10 @@ def predict(request, login):
         #input(compare_img_path)
         
         # 20210524 update login name to the existing one
-        existing_pkl = [filename for filename in glob(f'variants/static/pred_out/*_{cell_type}_{all_rsid[0]}_{len(all_rsid)}_score_1pos.pkl')]
+        existing_pkl = [filename for filename in glob(f'variants/static/pred_out/*_{cell_type}_{len(all_rsid)}_{all_rsid[0]}_score_1pos.pkl')]
         if len(existing_pkl)>0:
             #login2 = existing_pkl[0].split('/')[-1][:-15]
-            dst = f'variants/static/pred_out/{login}_{cell_type}_{all_rsid[0]}_{len(all_rsid)}_score_1pos.pkl'
+            dst = f'variants/static/pred_out/{login}_{cell_type}_{len(all_rsid)}_{all_rsid[0]}_score_1pos.pkl'
             os.rename(existing_pkl[0], dst)
             return render (request, "variants/predict.html", {
                 "rsid_list": all_rsid,
@@ -149,7 +159,11 @@ def predict(request, login):
                 })
 
     # 1. load vcf info
-    vcf_info = get_vcf_info(all_rsid) #[i.rsid for i in Snp.objects.all()]  
+    #vcf_info = get_vcf_info(all_rsid) #[i.rsid for i in Snp.objects.all()]  
+    vcf_info = []
+    for rsid in all_rsid:
+        info = Snp.objects.get(rsid=rsid)
+        vcf_info.append([info.chrm, info.pos, info.rsid, info.ref, info.alt])
     print(vcf_info)
 
     # 2. load Basenji model for variant effect prediction
@@ -205,7 +219,10 @@ def mutationMap(request, rsid, login):
         })
 
     # 1. load vcf info
-    vcf_info = get_vcf_info([rsid])
+    #vcf_info = get_vcf_info([rsid])
+    vcf_info = []
+    info = Snp.objects.get(rsid=rsid)
+    vcf_info.append([info.chrm, info.pos, info.rsid, info.ref, info.alt])
 
     # 2. load Basenji model for 41 mutagenesis table
     model = kipoi.get_model('Basenji')

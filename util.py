@@ -113,16 +113,41 @@ def get_vcf_info(file_path, save=False):
 
     pbar = tqdm(snps) # debug [:1]
     for rsid in pbar:
+        POSITION_FLAG = False
         #pbar.set_description("Processing %s" % rsid)
         #bool_index = ref_vcf['variants/ID']==rsid
+        if ':' in rsid: # 18:5956883 -> chr18:5956883-5956884
+            if 'chr' not in rsid:
+                rsid = f'chr{rsid}'
+            if '-' not in rsid:
+                start = int(rsid.split(':')[1])
+                rsid = f'{rsid}-{start}' # 'start+1' will be zero-based 
+            POSITION_FLAG = True
         try:
             #record = ref_vcf.query('dbsnp.rsid:'+rsid, fields='dbsnp')
             record = ref_vcf.query(rsid, scopes='dbsnp.rsid')
-            pos = record['hits'][0]['dbsnp']['hg19']['end'] # for snp, either start or end is fine
-            chrm, ref, alt = [record['hits'][0]['dbsnp'][item] for item in ['chrom', 'ref', 'alt']]
+            #pos = record['hits'][0]['dbsnp']['hg19']['end'] 
+            # for snp, either start or end is fine, but may encouter indel            
+            for i, hit in enumerate(record['hits']):
+                if POSITION_FLAG:
+                    if hit['dbsnp']['hg19']['end']==start:
+                        pos = start
+                        idx = i
+                        break
+                else:
+                    pos = hit['dbsnp']['hg19']['start']
+                    if hit['dbsnp']['hg19']['end']==pos:
+                        idx = i
+                        break
+
+            chrm, ref, alt, rsid = [record['hits'][idx]['dbsnp'][item] for item in ['chrom', 'ref', 'alt', 'rsid']]
+            if alt=='':
+                alt = 'N'
+            #if len(ref)>1:
+            #    ref = #start
             res.append([chrm, pos, rsid, ref, alt])           
         except:
-            print(f"{rsid} not in refence vcf file.")               
+            print(f"{rsid} not in the dbsnp or it's a structural variant.")               
     if save:
         prefix = file_path.split('/')[-1].split('.')[0]
         print(f'Save {prefix}.pkl at data/')
@@ -175,10 +200,8 @@ def pn_transform(row):
 def score2logo(df_mat, trans_type = pn_transform):
     for i in range(df_mat.shape[0]):
         df_mat.loc[i] = trans_type(df_mat.loc[i].values)
-    max_val = df_mat.max().max()
-    if max_val>2:
-        df_mat = df_mat/max_val*2
-    return df_mat
+
+    return df_mat#/np.abs(df_mat.max()-df_mat.min())*2
 
 #@shared_task(bind=True)
 def SAD_pipeline_v2(login, extract_vcf, target_id, model, cell_type, out_path, type='single_snp'):
@@ -212,42 +235,44 @@ def SAD_pipeline_v2(login, extract_vcf, target_id, model, cell_type, out_path, t
         print(item)
         #rsid = item[2]
         # Generate inteveral file
-        gen_vcf_itvl([item], 'data/subitem')
+        gen_vcf_itvl([item], f'data/subitem')
         if type=='multi_scan':
-            rsid_method_map[rsid] = muta_score_v2('data/subitem_itvl.bed', target_id, model)#, [item]
+            rsid_method_map[rsid] = muta_score_v2(f'data/subitem_itvl.bed', target_id, model)#, [item]
             for k, rsid_map in rsid_method_map[rsid].items():
                 #fig, (ax1, ax) = plt.subplots(2, 1, figsize=(14,4))
-                fig, (ax2, ax1, ax) = plt.subplots(3, 1, figsize=(15,5), gridspec_kw={'height_ratios': [0.5,2.5,2]})
-                cbar_ax = fig.add_axes([0.91, 0.1, .03, .4])
+                fig, (ax2, ax1, ax) = plt.subplots(3, 1, figsize=(15,5), gridspec_kw={'height_ratios': [0.4,2.5,2]})
+                cbar_ax = fig.add_axes([0.91, 0.1, .03, .3])
                 df = pd.DataFrame(rsid_map)
                 ref_logo = lm.Logo(score2logo(df, trans_type = ref_transform), ax=ax2)
                 ref_logo.ax.set_xticks([])
                 ref_logo.ax.set_yticks([])
                 ax2.axis("off")
-                ref_logo.ax.text(-1.5, 0.6, 'Ref', rotation=90)
+                #ref_logo.ax.text(40, 0.6, 'Reference')
+                ref_logo.ax.text(40.5, 0.5, 'Reference', fontsize=14)
 
                 df = score2logo(pd.DataFrame(rsid_map))
                 cons_logo = lm.Logo(df, ax=ax1)
                 cons_logo.ax.set_xticks([])
                 #cons_logo.ax.set_ylim([0, 2])
                 df = pd.DataFrame(np.array(list(rsid_map.values())),index=rsid_map.keys())                
-                df = df/960
+                #df = df/960
                 sns.heatmap(df,cmap="RdBu_r",center=0,ax=ax,cbar_ax=cbar_ax)
                 ax.set_title(rsid+' '+k)
                 ax.set_xlabel('Position around the snp')
                 plt.yticks(rotation=0)
                 #plt.show()
-                fig.tight_layout(rect=[0, 0, .9, 1])
+                #fig.tight_layout(rect=[0, 0, .9, 1])
                 fig.savefig(f'{out_path}/{rsid}_{k}_multi.png')
                 #f.clf()
                 plt.close()
             result += i
         else:
-            rsid_method_map[rsid] = muta_score_1_pos('data/subitem_itvl.bed', [item], target_id, model, save=False, out_path=out_path)
+            rsid_method_map[rsid] = muta_score_1_pos(f'data/subitem_itvl.bed', [item], target_id, model, save=False, out_path=out_path)
         #progress_recorder.set_progress(i + 1, total_tasks)
     
     if type=='single_snp':
-        with open(f'{out_path}/{login}_score_1pos.pkl', 'wb') as h:
+        all_rsids = [item[2] for item in extract_vcf]
+        with open(f'{out_path}/{login}_{cell_type}_{len(all_rsids)}_{all_rsids[0]}_score_1pos.pkl', 'wb') as h:
             pickle.dump(rsid_method_map, h, protocol=pickle.HIGHEST_PROTOCOL)
 
         return rsid_method_map
@@ -377,7 +402,7 @@ def muta_score_1_pos(itvl_file, vcf_info, target_map, model, out_path, save=True
         batch['inputs'] = np.append(batch['inputs'],batch['inputs'], axis=0) # make it two   
         batch['inputs'][1,start+4] = base_to_code[alt]
         print(list2str([code_to_base(item) for item in batch['inputs'][0, start:start+10]]))
-        print(list2str([code_to_base(item) for item in batch['inputs'][1, start:start+10]]))
+        #print(list2str([code_to_base(item) for item in batch['inputs'][1, start:start+10]]))
         result = model.predict_on_batch(batch['inputs'])
 
         # store target score in rsid:grp:[scores]
@@ -432,7 +457,8 @@ base_to_code = {
     'A':[1,0,0,0],
     'C':[0,1,0,0],
     'G':[0,0,1,0],
-    'T':[0,0,0,1]
+    'T':[0,0,0,1],
+    'N':[0,0,0,0]
 }
 
 group_map = {'DNASE': 'Open chromatin',

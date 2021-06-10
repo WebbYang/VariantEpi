@@ -3,16 +3,23 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const a = document.querySelector('li').innerHTML
-        const b = 'No tasks.'
+        const b = 'No task.'
         var n = a.localeCompare(b);
         //document.getElementById("demo").innerHTML = a + "<br>" + b + "<br>" + n;
         if (n === 0) {
             document.querySelector("#predict").disabled = "disabled";
         }
+        else {
+            document.querySelector("#Submit").style.color='#A9A9A9';
+        }
     });
 
     function showCircle() {
         alert('Start Loading! May take a few minutes...');
+        document.getElementById("postCircle").style.display = "block";
+    }
+
+    function showCircle1() {
         document.getElementById("postCircle").style.display = "block";
     }
 </script>
@@ -23,10 +30,20 @@
     <div class="loader" id="postCircle">
     </div>
     <h3>Input</h3>
-    <form action="{% url 'variants:index' %}" method="post">
-        {% csrf_token %} {{ form }}
-        <input type="submit" value="Submit">
-    </form>
+    <div>
+        <div class="w3-container w3-cell" style="width: 70%">
+            <form action="{% url 'variants:index' %}" method="post">
+                {% csrf_token %} {{ form }}
+                <input onclick="showCircle1()" type="submit" value="Submit" id="Submit">
+            </form>
+        </div>
+        <div class="w3-container w3-cell">
+            <form action="{% url 'variants:predict' login %}">
+                <!--<button id="Calculate">Calculate</button>-->
+                <button onclick="showCircle()" id="predict" type="submit">Predict</button>
+            </form>
+        </div>
+    </div>  
     
     <div class="w3-container w3-cell" style="width: 70%">
         <p>
@@ -35,7 +52,7 @@
                 {% for task in bs_info %}
                 <li>{{ task }}</li>
                 {% empty %}
-                <li>No tasks.</li>
+                <li>No task.</li>
                 {% endfor %}
             </ul>
         </p>
@@ -47,16 +64,13 @@
                 {% for rsid in rsids %}
                 <li>{{ rsid }}</li>
                 {% empty %}
-                <li>No rsid.</li>
+                <li>No rsID.</li>
                 {% endfor %}
             </ul>
         </p>      
     </div>
 
-    <form action="{% url 'variants:predict' login %}">
-        <!--<button id="Calculate">Calculate</button>-->
-        <button onclick="showCircle()" id="predict" type="submit">Predict</button>
-    </form>
+    
 </div>
 
 
