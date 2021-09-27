@@ -8,10 +8,28 @@
         //document.getElementById("demo").innerHTML = a + "<br>" + b + "<br>" + n;
         if (n === 0) {
             document.querySelector("#predict").disabled = "disabled";
+            //document.getElementById("#selectAll").style.display="none";
         }
         else {
             document.querySelector("#Submit").style.color='#A9A9A9';
+            //document.getElementById("#selectAll").style.display= "block";
+            //document.getElementById("#selectAll").innerHTML = "Select / Deselect All\n"
+            window.addEventListener("load", function(){
+                var chkbox = document.getElementById("tabl");
+                var selchk = chkbox.getElementsByTagName("input");
+                for (var i=0; i<selchk.length; i++){
+                    let chkval = selchk[i].value;
+                    if(chkval.includes("missense") || chkval.includes("synonymous") || 
+                      chkval.includes("stop_gained") || chkval.includes("frame") || chkval.includes("coding")){
+                        selchk[i].checked = false;
+                    }
+                    else {
+                        selchk[i].checked = true;
+                    }
+                }
+            });
         }
+        document.getElementById("debug_rsid").style.display="none";
     });
 
     function showCircle() {
@@ -22,6 +40,28 @@
     function showCircle1() {
         document.getElementById("postCircle").style.display = "block";
     }
+
+    function get_values() {
+        var selected = new Array();
+        var chkbox = document.getElementById("tabl");
+        var selchk = chkbox.getElementsByTagName("input");
+        for (var i=0; i<selchk.length; i++){
+            if(selchk[i].checked){
+                selected.push(selchk[i].value.split(' ')[1])
+            }
+        }
+        document.getElementById("display_value").value = selected;
+        alert(selected.toString());
+        showCircle();
+        return selected
+    }
+
+    // function toggle(source) {
+    //     checkboxes = document.getElementsByName('foo');
+    //     for(var checkbox in checkboxes)
+    //         checkbox.checked = source.checked;
+    //     }
+        
 </script>
 
 <div class="w3-container">
@@ -38,16 +78,19 @@
             </form>
         </div>
         <div class="w3-container w3-cell">
-            <form action="{% url 'variants:predict' login %}">
-                <!--<button id="Calculate">Calculate</button>-->
-                <button onclick="showCircle()" id="predict" type="submit">Predict</button>
-            </form>
+            <form action="{% url 'variants:predict' login %}" method="post">
+            <!--<button id="Calculate">Calculate</button>-->
+            <button onclick="get_values()" id="predict" type="submit">Predict</button>
+            <p id="debug_rsid">
+                {% csrf_token %} {{ form2 }} <!-- <input id="display_value" type="text"> -->
+            </p>
+            </form>         
         </div>
     </div>  
     
     <div class="w3-container w3-cell" style="width: 70%">
         <p>
-            <h3>Available Tasks</h3>
+            <h3>Database-included experiments</h3>
             <ul>
                 {% for task in bs_info %}
                 <li>{{ task }}</li>
@@ -59,7 +102,8 @@
     </div>
     <div class="w3-container w3-cell">
         <p>
-            <h3>Available rsIDs</h3>
+            <h3>Valid rsIDs</h3>
+            <!--
             <ul>
                 {% for rsid in rsids %}
                 <li>{{ rsid }}</li>
@@ -67,7 +111,22 @@
                 <li>No rsID.</li>
                 {% endfor %}
             </ul>
-        </p>      
+            <input type="checkbox" id="selectAll" onClick="toggle(this)" value="selectAll">
+            -->        
+            <table id="tabl">
+            {% for rsid in rsids %}
+            <tr>
+                <td>
+                    <input type="checkbox" name="foo" value="{{rsid}}"> <!-- checked-->
+                    <label> {{ rsid }}</label><br>
+                </td>
+            </tr>
+            {% empty %}
+                No rsID.
+            {% endfor %}
+            </table>
+        </p> 
+        
     </div>
 
     

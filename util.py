@@ -16,6 +16,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from glob import glob
 from matplotlib import cm
+from scipy.stats import ttest_ind
 #import threading
 #import json
 #from celery import shared_task
@@ -145,7 +146,27 @@ def get_vcf_info(file_path, save=False):
                 alt = 'N'
             #if len(ref)>1:
             #    ref = #start
-            res.append([chrm, pos, rsid, ref, alt])           
+            annot = None
+            # for item in record['hits']:
+            #     if 'cadd' in item.keys():
+            #         annot = item['cadd']['consequence']
+            #         if type(annot)==list:
+            #             annot = annot[-1]
+            #         break
+            found = record['hits'][0]['snpeff']['ann']
+            if type(found)==list:
+                for ann in found:
+                    if 'effect' in ann.keys():
+                        annot = ann['effect']
+                        break
+            else:
+                if 'effect' in found.keys():
+                    annot = found['effect']
+
+            if annot is not None:
+                res.append([chrm, pos, rsid, ref, alt, annot])
+            else:
+                res.append([chrm, pos, rsid, ref, alt])           
         except:
             print(f"{rsid} not in the dbsnp or it's a structural variant.")               
     if save:
@@ -286,15 +307,51 @@ def find_max_func(dic_data, df_pvals):
     '''   
     max_func = ''
     max_score = 0
-    df_v = df_pvals.max()
-    max_p = df_v.max()
-    func_list = [item for item in df_v[df_v==df_v.max()].index]
+    ttest_p = df_pvals['ttest_p']
+    df_pvals = df_pvals.iloc[:,:-1]
+    func_list = [item for item in df_pvals.index]
     for k in func_list:
-        scores = [abs(item) for item in dic_data[k]]
-        score = dic_data[k][scores.index(max(scores))]
-        if abs(score)>abs(max_score):
-            max_score = score
+        score = np.mean([abs(item) for item in dic_data[k]])
+        if score > abs(max_score):
+            max_score = np.mean(dic_data[k]) #dic_data[k][scores.index(max(scores))] 
             max_func = k
+            max_p = df_pvals[k].max()
+    
+    # 20210914 replace
+    # max_func = ''
+    # max_score = 0
+    # ttest_p = df_pvals['ttest_p']
+    # df_pvals = df_pvals.iloc[:,:-1]
+    # df_v = df_pvals.max()
+    # max_p = df_v.max()
+    # func_list = [item for item in df_v[df_v==df_v.max()].index]
+    # # 20210626: to add the whole vector of p value to compare the function consistency
+    # #sum_p = {}
+    # for k in func_list:
+    #     scores = [abs(item) for item in dic_data[k]]
+    #     score = dic_data[k][scores.index(max(scores))]
+    #     #sum_p[k] = sum(df_pvals[k])
+    #     if abs(score)>abs(max_score):
+    #         max_score = score
+    #         max_func = k
+
+    # 20210626: check if thae max function contains the max sum p
+    # if max_p!=0:
+    #     sum_p_reverse = {v:k for k,v in sum_p.items()}
+    #     max_sum_p = max(sum_p.values())
+    #     if sum_p[max_func] < max_sum_p:
+    #         print('The max score is not the max function!')
+    #         print(f'original max func: {max_func}')
+    #         print(f'original max score: {max_score}')
+    #         max_func = sum_p_reverse[max_sum_p]
+    #         scores = [abs(item) for item in dic_data[max_func]]
+    #         max_score = dic_data[max_func][scores.index(max(scores))]       
+    #         max_p = df_v[max_func]
+    #         print(f'new max func: {max_func}')
+    #         print(f'new max score: {max_score}')
+    #         #input('checkpoint')
+    # else:
+    #     max_func = 'N/A'
 
     '''for k, scores in dic_data.items():
         for score in scores:
@@ -302,11 +359,19 @@ def find_max_func(dic_data, df_pvals):
                 max_score = score
                 max_func = k
     max_p = df_pvals[max_func].max()'''
-    if max_p < 2:
-        max_p = "No significance"
+    max_ttest_p = ttest_p[max_func]
+    #if max_p < 2:
+    if max_ttest_p < 2:
+        max_p = "NA"
+        max_func = "NA"
     else:
-        max_p = '{:.1f}'.format(max_p)
-    return max_func, '{:.3f}'.format(max_score), max_p
+        #max_p = '{:.1f}'.format(max_p)
+        mask = np.array(func_list)!=max_func
+        max_p = df_pvals[max_func][mask].min()
+        second_func = np.array(func_list)[mask][df_pvals[max_func][mask]==max_p][0]
+        max_p = str(second_func) if max_p<1 else 'NA'
+        #print(f'Second function: {second_func}')
+    return max_func, '{:.3f}'.format(max_score), max_p, max_ttest_p
 
 def summary_score(login):
     filename = glob(f"variants/static/pred_out/{login}*_score_1pos.pkl")[0]
@@ -318,11 +383,11 @@ def summary_score(login):
         for file in glob("variants/static/pred_out/"+k.split(' ')[0]+'*_group_p.csv'):
             df_pvals = pd.read_csv(file, index_col=0)
 
-        max_func, max_score, max_p = find_max_func(snp_scores, df_pvals)
+        max_func, max_score, second_func, ttest_p = find_max_func(snp_scores, df_pvals)
         cell, rsid, pos = re.split('_| ', k)
-        summary_scores.append((cell, rsid, pos ,max_func, max_score, max_p)) 
+        summary_scores.append((cell, rsid, pos ,max_func, max_score, ttest_p, second_func)) 
     
-    return sorted(summary_scores, key=lambda x: float(x[-2]), reverse=True) #abs(float(x[-2]))
+    return sorted(summary_scores, key=lambda x: float(x[-3]), reverse=True) #abs(float(x[-2]))
 #============20210330=============
 
 def muta_score_v2(itvl_file, target_map, model): #, vcf_info
@@ -470,9 +535,9 @@ group_map = {'DNASE': 'Open chromatin',
         'H3K27me3': 'Repressed',
         'H3K4me3': 'Promoter',
         'H3K9ac': 'Promoter',
-        'CAGE:embryonic': 'expression',
-        'CAGE:adult':'expression',
-        'CAGE':'expression'
+        'CAGE:embryonic': 'Expression',
+        'CAGE:adult':'Expression',
+        'CAGE':'Expression'
     }
 
 def posthoc_p(score_dic, out_path):
@@ -480,26 +545,42 @@ def posthoc_p(score_dic, out_path):
     parse each rsid:grp:scores to p values 
     '''
     p_dic = {}
+    t_test_p_dic = {}
     img_list = []
     for rsid in score_dic.keys():
         col_label, col_val = [], []
         for k,v in score_dic[rsid].items():
             col_label.extend(len(v)*[k])
-            col_val.extend(v)
+            col_val.extend(v)           
         df_test = pd.DataFrame({'score':col_val,'group':col_label})
+        # abs_score = df_test['score'].apply(abs)
+        # max_grp = df_test['group'][abs_score==max(abs_score)].iloc[0]
+        # print('========')
+        # print(max_grp)
+        df_test.to_csv('test_34584161.csv')
+        # print('========')
         rsid = rsid.split(' ')[0]+rsid.split(' ')[1][-3:]
-        print(rsid)
+        # 20210912 add t test p value
+        ttest_p_val = []
+        for k in ['Active','Enhancer','Expression','Open chromatin','Promoter','Repressed']:
+            case = df_test['score'][df_test['group']==k] #max_grp
+            control = df_test['score'][df_test['group']!=k] #max_grp
+            ttest_p_val.append(ttest_ind(case, control).pvalue)
+        #t_test_p_dic[rsid] = np.log(p_val)
         #df_test.to_csv(f'{out_path}/{rsid}_grp_socre.csv') # 20210316
-        try:
-            posthoc_df = ph.posthoc_conover(df_test, val_col='score', group_col='group', p_adjust = 'holm')
-            log_df = -np.log10(posthoc_df)
-            log_df.to_csv(f'{out_path}/{rsid}_group_p.csv', float_format='%.1f') # 20210316
-            min_p_val, img_filename = p_val_heatmap(posthoc_df, out_path, rsid)
-            img_list.append(img_filename.split('/static/')[-1])
-            p_dic[rsid] = min_p_val
-        except:
-            input('Error: statistical calculation.')
-    return p_dic, img_list
+        #try:
+        posthoc_df = ph.posthoc_conover(df_test, val_col='score', group_col='group', p_adjust = 'holm')
+        min_p_val, img_filename = p_val_heatmap(posthoc_df, out_path, rsid)
+        posthoc_df['ttest_p'] = ttest_p_val
+        log_df = -np.log10(posthoc_df)
+        log_df.to_csv(f'{out_path}/{rsid}_group_p.csv', float_format='%.1f') # 20210316
+        
+        img_list.append(img_filename.split('/static/')[-1])
+            #p_dic[rsid] = min_p_val
+        #except:
+            #print(f'Error: statistical calculation in {rsid}.')
+    #return p_dic, img_list, t_test_p_dic
+    return img_list
 
 def p_val_heatmap(posthoc_df, out_path, rsid=None):
     #mask = np.zeros(posthoc_df.shape, dtype=bool)
@@ -523,12 +604,62 @@ def p_val_heatmap(posthoc_df, out_path, rsid=None):
     return data.max().max(), img_filename
 
 def plot_snp_p(res, out_path, login):
-    rsids = [item[1] for item in res]
-    pvals = [float(item[-1]) if item[-1]!='No significance' else 0 for item in res]
+    '''
+    cell, rsid, pos ,max_func, max_score, max_p, ttest_p
+    '''
+    rsids = np.array([item[1] for item in res])
+    pvals = np.array([float(item[-2]) if item[-1]!='No significance' else 0 for item in res])
     grps = [item[3] for item in res]
+    grps = np.array([item if item!='expression' else 'Expression' for item in grps])
+    scores = np.array([float(item[-3]) for item in res])
+
+    rsids = rsids[pvals>=2]
+    p_list = pvals[pvals>=2]
+    grps = grps[pvals>=2]
+    scores = scores[pvals>=2]
+
+    c_map = {'Open chromatin':0,'Promoter':1,'Enhancer':2,'Active':3, 'Repressed':4, 'Expression':5, 'N/A':6}
+    r_cmap = {v:k for k,v in c_map.items()}
+    colors = cm.get_cmap('hsv')
+    x = np.arange(len(rsids))
+    y = np.array(scores)
+    c = np.array([c_map[g] for g in grps])
+    #s = np.array([p*5 for p in pvals])       
+    #p_list = np.array(pvals)
+        
+    fig, ax = plt.subplots()
+    
+    #ax.bar(np.arange(len(p_list)), p_list)
+    ax.bar(np.arange(len(p_list)), y)
+    plt.xticks(np.arange(len(p_list)),labels=rsids,rotation=90)
+    ax.set_ylabel('gain/loss of function')
+    ax.bar(np.arange(len(p_list))[y>0], y[y>0])
+    plt.title('Most Significant Difference score of each Variant')
+    plt.tight_layout() 
+    
+    ax2 = ax.twinx()
+    for i in range(6):
+        if len(y[c==i])!=0:
+            ax2.scatter(x[c==i], p_list[c==i], c=colors(c[c==i]/6), label=r_cmap[i]) #, s=s[c==i]
+    ax2.legend() 
+    ax2.hlines(2,-1,len(p_list),linestyles='dashed',colors='k')#colors='cyan'
+    ax2.set_ylabel('-log(p) of variant')
+    ax2.set_ylim(0, max(p_list)+0.5)
+    plt.xlim(-1,len(p_list))
+    #plt.show()
+    plt.tight_layout()
+    plt.savefig(f'{out_path}/Snps_p_summary_{login}.png')
+    plt.close()
+
+def old_plot_snp_p(res, out_path, login):
+    rsids = [item[1] for item in res]
+    pvals = [float(item[-2]) if item[-2]!='No significance' else 0 for item in res]
+    grps = [item[3] for item in res]
+    grps = [item if item!='expression' else 'Expression' for item in grps]
+    
     scores = [float(item[4]) for item in res]
 
-    c_map = {'Open chromatin':0,'Promoter':1,'Enhancer':2,'Active':3, 'Repressed':4, 'expression':5}
+    c_map = {'Open chromatin':0,'Promoter':1,'Enhancer':2,'Active':3, 'Repressed':4, 'Expression':5, 'N/A':6}
     r_cmap = {v:k for k,v in c_map.items()}
     colors = cm.get_cmap('hsv')
     x = np.arange(len(rsids))
@@ -551,8 +682,8 @@ def plot_snp_p(res, out_path, login):
     ax2 = ax.twinx()
     for i in range(6):
         if len(y[c==i])!=0:
-            ax2.scatter(x[c==i], y[c==i], c=colors(c[c==i]/6), s=s[c==i], label=r_cmap[i])
-            ax2.legend() 
+            ax2.scatter(x[c==i], y[c==i], c=colors(c[c==i]/6), label=r_cmap[i]) #, s=s[c==i]
+    ax2.legend() 
     ax2.set_ylabel('gain/loss of function')
     plt.xlim(-1,len(p_list))
     #plt.show()
@@ -565,9 +696,10 @@ def score_box_plot(snp_grp_score, out_path):
     for rsid in snp_grp_score.keys():
         plt.title(rsid)
         xticks = list(snp_grp_score[rsid].keys())
+        xticks = [item if item!='expression' else 'Expression' for item in xticks]
         plt.boxplot(x=snp_grp_score[rsid].values(), labels=xticks)
         plt.xticks(rotation=30)
-        plt.ylabel('Difference score')
+        plt.ylabel('Differential score')
         plt.tight_layout()  
         filename = f'{out_path}/{rsid}_box.png'
         plt.savefig(filename)

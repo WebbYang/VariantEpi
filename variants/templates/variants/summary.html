@@ -4,9 +4,15 @@
 
 
 <style>
-    th{ 
+    th { 
         color:#fff;
-            }
+    }
+    td.center {
+        text-align: center;
+    }
+    td.center2 {
+        text-align: center;
+    }
 </style>
 
 <script>
@@ -22,17 +28,17 @@
     //var myArray = []; 
     function readTable(){
         var myArray = [];
-        let columns = ['CellType','rsID','Position','Function','DifferenceScore','logp'];
+        let columns = ['CellType','rsID','Position','Function','DifferenceScore','logp_diff','logp'];
         var t = document.getElementById('myTable');
         var d = t.getElementsByTagName("tr");
-        console.log(d.length);
+        //console.log(d.length);
         var di;
         for (i = 0; i < d.length; i++) {
             var r = d[i].getElementsByTagName("td");
             var item = {};
             var j = 0;
             for (k of columns){
-                if (k==="DifferenceScore" || k==="logp") {
+                if (k==="DifferenceScore" || k==="logp_diff") { //k==="logp" ||
                     item[k] = parseFloat(r[j].innerHTML);
                 }
                 else {
@@ -40,13 +46,17 @@
                 }
                 j++;
             }
-            console.log(item);
+            //console.log(item);
             myArray.push(item);
         }
         return myArray
 
     }
     //myArray = document.addEventListener('DOMContentLoaded', readTable);
+    document.addEventListener('DOMContentLoaded', function() {
+        var myArray = readTable();
+        buildTable(myArray);
+    });
 
     function buildTable(data){
 		var table = document.getElementById('myTable')
@@ -57,10 +67,11 @@
 							<td>${data[i].rsID}</td>
 							<td>${data[i].Position}</td>
                             <td>${data[i].Function}</td>
-                            <td>${data[i].DifferenceScore}</td>
+                            <td class="center">${data[i].DifferenceScore}</td>                           
+                            <td class="center2">${data[i].logp_diff}</td>
                             <td>${data[i].logp}</td>
-					  </tr>`
-			table.innerHTML += row
+					  </tr>`;
+			table.innerHTML += row;
 
 
 		}
@@ -86,7 +97,7 @@
             }
             $(this).html(text)
             buildTable(myArray)
-            console.log("built-------");
+            //console.log("built-------");
         })
     });
 </script>
@@ -124,9 +135,10 @@
         <th data-column="CellType" data-order="desc">Cell Type &#9650</th>
         <th data-column="rsID" data-order="desc">rsID &#9650</th>
         <th data-column="Position" data-order="desc">Position &#9650</th>
-        <th data-column="Function" data-order="desc">Function &#9650</th>
+        <th data-column="Function" data-order="desc">Main Function &#9650</th>
         <th data-column="DifferenceScore" data-order="desc">Differential Score &#9650</th>
-        <th data-column="logp" data-order="desc">-log(p) &#9650</th>
+        <th data-column="logp_diff" data-order="desc">-log(p)_diff &#9650</th>
+        <th data-column="logp" data-order="desc">Second Function &#9650</th>
     </tr>
     <tbody id="myTable">
         {% for item in list %}

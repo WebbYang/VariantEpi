@@ -32,7 +32,7 @@
 
 <script src="/static/d3.min.js?v=3.2.8"></script>
 
-<script type="text/javascript"charset="utf-8">
+<script type="text/javascript" charset="utf-8">
 
     d3.selection.prototype.last = function() {
         var last = this.size() - 1;
@@ -42,6 +42,9 @@
         //path = path.split('group')[0]+'grp_socre.csv';
         var img_tag = d3.select('#'+idx); //img tag
         var box_tag = d3.select('#'+idx+'table');
+        var btn_tag = document.getElementById(idx+'btn');//d3.select('#'+idx+'btn');
+        //btn_tag.value = btn_tag.value == "Read table" ? "Hide table" : "Read table";
+
         if (box_tag.text().length==0) { //style.display !== "none"
             path = path.split('.')[0]+'.csv';
             d3.text(path, function(data) {
@@ -67,10 +70,12 @@
             //    img_tag.attr("hidden",null);
             //}
             if (box_tag.attr("hidden")) {
+                btn_tag.innerHTML = "Hide table";
                 box_tag.attr("hidden",null);
                 //img_tag.attr("hidden",true);
             }
             else {
+                btn_tag.innerHTML = "Read table";
                 box_tag.attr("hidden",true);
             }
             
@@ -106,7 +111,7 @@
         <img src="{% static img %}" alt="boxplot"> 
     </a>
     <div id="box{{ forloop.counter }}table"></div>
-    <button onclick="generate_csv('{% static img %}', 'box{{ forloop.counter }}')">Read table</button>
+    <button id="box{{ forloop.counter }}btn" onclick="generate_csv('{% static img %}', 'box{{ forloop.counter }}')">Read table</button>
     
     {% endfor %}
 </div>
@@ -118,7 +123,7 @@
         <img src="{% static img %}" alt="posthoc"> 
     </a>
     <div id="pval{{ forloop.counter }}table"></div>
-    <button onclick="generate_csv('{% static img %}', 'pval{{ forloop.counter }}')">Read table</button>  
+    <button id="pval{{ forloop.counter }}btn" onclick="generate_csv('{% static img %}', 'pval{{ forloop.counter }}')">Read table</button>  
     
     {% endfor %}
 </div>

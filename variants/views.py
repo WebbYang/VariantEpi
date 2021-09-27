@@ -10,15 +10,24 @@ from util import summary_score
 import kipoi
 from glob import glob
 import os
+import json
 
 record_target_pk = {}
 record_snp_pk = {}
+record_request_rsid = {}
 # Create your views here.
 
 class NewTaskForm(forms.Form):
     cell_type = forms.CharField(label="Cell Type", widget=forms.TextInput(attrs={'placeholder': 'pancreas'})) #, help_text='(One cell type, tissue or cell line) <br><br>'
     rsid = forms.CharField(label="rsID", widget=forms.TextInput(attrs={'placeholder': 'rs34584161, rs11708067'})) #, help_text='(Multiple ids are accepted with a separator as commas or spaces) <br><br>'
     #rsid = forms.CharField(label=mark_safe("<br /> rsID or chromosomal position"), widget=forms.TextInput(attrs={'placeholder': 'rs34584161, rs11708067'}), help_text='(Multiple ids are accepted with a separator as commas or spaces)') #
+
+class RsidListForm(forms.Form):
+    selected = forms.CharField(widget= forms.TextInput(attrs={'id':'display_value'}))
+#     def __init__(self, *args, **kwargs):
+#         super(RsidListForm, self).__init__(*args, **kwargs)
+#         for rsid in args[0]:
+#             self.fields[rsid] = forms.CheckboxInput()
 
 def map_cell(cell_type, login):
     #record_target_pk.append([])
@@ -47,9 +56,10 @@ def index(request):
         request.session["bs_info"] = []
     
     # if this is a POST request we need to process the form data
-    if request.method == 'POST':
+    if request.method == 'POST' and 'cell_type' in request.body.decode("utf-8") :
         # create a form instance and populate it with data from the request:
         form = NewTaskForm(request.POST)
+        form2 = RsidListForm()
         # check whether it's valid:
         if form.is_valid():
             # process the data in form.cleaned_data as required
@@ -67,8 +77,15 @@ def index(request):
                 vcf_info = get_vcf_info(rsids)
                 rsids = []
                 for info in vcf_info:
-                    chrm, pos, rsid, ref, alt = info
-                    rsids.append(rsid)
+                    annot = None
+                    try:
+                        chrm, pos, rsid, ref, alt, annot = info
+                    except:
+                        chrm, pos, rsid, ref, alt = info
+                    if annot is not None:
+                        rsids.append('('+ annot+') '+rsid)
+                    else:
+                        rsids.append(rsid)
                     if rsid not in existing_rsids:
                         n = Snp.objects.create(chrm=chrm, pos=pos, rsid=rsid, ref=ref, alt=alt)
                     #record_snp_pk[-1].append(n.id)
@@ -89,10 +106,24 @@ def index(request):
                 "bs_info": bs_info,
                 "rsids": rsids,
                 "form": form,
+                "form2": form2,
                 "login": login_time,
                 })
 
-    
+    # elif request.method == 'POST':
+    #     form = RsidListForm(request.POST)
+    #     input(form)
+    #     if form.is_valid():
+    #         check_rsids = form.cleaned_data["rsids"]
+    #         print('-------------------'*3)
+    #         print(check_rsids)
+    #         print('-------------------'*3)
+    #         return render(request, 'variants/predict.html', {
+    #             "login": login_time,
+    #             "checked_rsids": checked_rsids,
+    #             })
+        
+
     # if a GET (or any other method) we'll create a blank form
     else:
         #form = NameForm()
@@ -126,23 +157,40 @@ def predict(request, login):
     #pred_list = [i.rsid for i in Snp.objects.all() if i.rsid not in done_list]
     #all_list = [i.rsid for i in Snp.objects.all()]
     cell_type = target.objects.get(pk=record_target_pk[login][0]).cell
-    all_rsid = [Snp.objects.get(id=i).rsid for i in record_snp_pk[login]]
+    #all_rsid = [Snp.objects.get(id=i).rsid for i in record_snp_pk[login]]
+    if 'selected' in request.POST.keys():
+        request_rsids = request.POST['selected'].split(',')
+        record_request_rsid[login] = request_rsids
+        print('==='*20)
+        print(request_rsids)
+        print('==='*20)
+    all_rsid = [Snp.objects.get(rsid=i).rsid for i in record_request_rsid[login]]
      # 20210524 update login info to design for existed cases of pkl
     #login2 = login+'_'+cell_type+'_'+all_rsid[0]+'_'+str(len(all_rsid))
 
     found_list = [item for item in glob(f'variants/static/pred_out/{cell_type}_rs*_box.png')]
     found_list_p = [item for item in glob(f'variants/static/pred_out/{cell_type}_rs*_group_p.png')]
-    done_list = [] 
-    done_list_p = []
+    #done_list = []
+    #done_list_p = []
+    done_dic = {}
+    done_dic_p = {}
      
     if len(found_list)>0:
-        done_list = [item for item in found_list if item.split('/')[-1].split('_')[1].split(' ')[0] in all_rsid]
-        done_list_p = [item for item in found_list_p if item.split('/')[-1].split('_')[1].split('>')[0][:-1] in all_rsid]
+        #done_list = [item for item in found_list if item.split('/')[-1].split('_')[1].split(' ')[0] in all_rsid]
+        #done_list_p = [item for item in found_list_p if item.split('/')[-1].split('_')[1].split('>')[0][:-1] in all_rsid]
+        for item in found_list:
+            found_id = item.split('/')[-1].split('_')[1].split(' ')[0]
+            if found_id in all_rsid:
+                done_dic[found_id] = item
+        for item in found_list_p:
+            found_id = item.split('/')[-1].split('_')[1].split('>')[0][:-1]
+            if found_id in all_rsid:
+                done_dic_p[found_id] = item       
            
     # if all rsids are already existed
-    if len(done_list)==len(all_rsid):
-        box_img_path = [item.split('/static/')[-1] for item in done_list] #[glob(f'variants/static/pred_out/{i}*_box.png')[0].split('/static/')[-1] for i in Snp.objects.all()]
-        compare_img_path = [item.split('/static/')[-1] for item in done_list_p]#[glob(f'variants/static/pred_out/{i}*_group_p.png')[0].split('/static/')[-1] for i in Snp.objects.all()]
+    if len(done_dic)==len(all_rsid):
+        box_img_path = [done_dic[item].split('/static/')[-1] for item in all_rsid] # done_list] #[glob(f'variants/static/pred_out/{i}*_box.png')[0].split('/static/')[-1] for i in Snp.objects.all()]
+        compare_img_path = [done_dic_p[item].split('/static/')[-1] for item in all_rsid]#done_list_p]#[glob(f'variants/static/pred_out/{i}*_group_p.png')[0].split('/static/')[-1] for i in Snp.objects.all()]
         #input(compare_img_path)
         
         # 20210524 update login name to the existing one
@@ -186,7 +234,8 @@ def predict(request, login):
     #input(f"target id list: {record_target_pk}")
     snp_grp_score = SAD_pipeline_v2(login, vcf_info, parse_info, model, cell_type, out_path=out_path)
     box_img_path = score_box_plot(snp_grp_score, out_path)
-    p_vals, compare_img_path = posthoc_p(snp_grp_score, out_path)
+    #p_vals, compare_img_path, t_test_p_vals = posthoc_p(snp_grp_score, out_path)
+    compare_img_path = posthoc_p(snp_grp_score, out_path)
     #img_path = []
     #for img1, img2 in zip(box_img_path, compare_img_path):
     #    img_path.append(img1)
@@ -259,7 +308,7 @@ def about(request):
 
 def summary(request, login):
     #20210330
-    res = summary_score(login)   
+    res = summary_score(login)
     plot_snp_p(res, "variants/static/pred_out", login)
     return render (request, f"variants/summary.html", {
         "list": res,
