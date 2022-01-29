@@ -557,20 +557,25 @@ def posthoc_p(score_dic, out_path):
         # max_grp = df_test['group'][abs_score==max(abs_score)].iloc[0]
         # print('========')
         # print(max_grp)
-        df_test.to_csv('test_34584161.csv')
+        #df_test.to_csv('test_34584161.csv')
         # print('========')
         rsid = rsid.split(' ')[0]+rsid.split(' ')[1][-3:]
         # 20210912 add t test p value
         ttest_p_val = []
         for k in ['Active','Enhancer','Expression','Open chromatin','Promoter','Repressed']:
             case = df_test['score'][df_test['group']==k] #max_grp
-            control = df_test['score'][df_test['group']!=k] #max_grp
-            ttest_p_val.append(ttest_ind(case, control).pvalue)
+            if len(case)>0:
+                control = df_test['score'][df_test['group']!=k] #max_grp
+                ttest_p_val.append(ttest_ind(case, control).pvalue)
         #t_test_p_dic[rsid] = np.log(p_val)
         #df_test.to_csv(f'{out_path}/{rsid}_grp_socre.csv') # 20210316
         #try:
         posthoc_df = ph.posthoc_conover(df_test, val_col='score', group_col='group', p_adjust = 'holm')
         min_p_val, img_filename = p_val_heatmap(posthoc_df, out_path, rsid)
+        print('=============================')
+        print(ttest_p_val)
+        print(posthoc_df.shape)
+        print('=============================')
         posthoc_df['ttest_p'] = ttest_p_val
         log_df = -np.log10(posthoc_df)
         log_df.to_csv(f'{out_path}/{rsid}_group_p.csv', float_format='%.1f') # 20210316
