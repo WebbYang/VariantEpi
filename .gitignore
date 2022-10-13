@@ -5,9 +5,15 @@ variants/static/pred_out/*
 nohup.out
 data/hg19*
 db.sqlite3
-VariantEpi/settings.py
+VariantEpi/settings_real.py
 .DS_Store
 .ipynb_checkpoints/
 .vscode/
 variants/static/bak/*
 variants/views.py_bak
+VariantEpi/__pycache__/settings.cpython-37.pyc
+ __pycache__/util.cpython-37.pyc
+variants/__pycache__/views.cpython-37.pyc
+test_34584161.csv
+variants/templates/variants/index_chk_exp.html
+variants/views_chk_exp.py
