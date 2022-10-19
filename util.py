@@ -361,15 +361,15 @@ def find_max_func(dic_data, df_pvals):
     max_p = df_pvals[max_func].max()'''
     max_ttest_p = ttest_p[max_func]
     #if max_p < 2:
-    if max_ttest_p < 2:
-        max_p = "NA"
-        max_func = "NA"
-    else:
+    # if max_ttest_p < 2:
+    #     max_p = "NA"
+    #     max_func = "NA"
+    # else:
         #max_p = '{:.1f}'.format(max_p)
-        mask = np.array(func_list)!=max_func
-        max_p = df_pvals[max_func][mask].min()
-        second_func = np.array(func_list)[mask][df_pvals[max_func][mask]==max_p][0]
-        max_p = str(second_func) if max_p<1 else 'NA'
+    mask = np.array(func_list)!=max_func
+    max_p = df_pvals[max_func][mask].min()
+    second_func = np.array(func_list)[mask][df_pvals[max_func][mask]==max_p][0]
+    max_p = str(second_func) if max_p<1 else 'NA'
         #print(f'Second function: {second_func}')
     return max_func, '{:.3f}'.format(max_score), max_p, max_ttest_p
 
